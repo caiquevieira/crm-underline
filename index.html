@@ -696,7 +696,7 @@ function mostrarStatus(txt, erro = false) { const s = $('#status'); s.textConten
 // ---------- servidor ----------
 // No PC (iniciar.bat, 127.0.0.1) fala com o server.py, que grava o crm.xlsx.
 // No GitHub Pages fala com o Apps Script da Planilha Google (apps-script/Codigo.gs), com uma chave de acesso.
-const API_URL = ''; // endereço do App da Web do Apps Script (termina em /exec); vazio = pergunta ao conectar
+const API_URL = 'https://script.google.com/macros/s/AKfycbzjk_m9IE3p-xj7FRaqcpQIy53M-3ZeBLOyFG84pfatNJKey_Gkj9Xf2N2cvL5KLgTD/exec'; // App da Web do Apps Script; vazio = pergunta ao conectar
 const LOCAL = ['127.0.0.1', 'localhost'].includes(location.hostname);
 const ONDE = LOCAL ? 'no Excel' : 'na planilha';
 function conexao() { try { return JSON.parse(localStorage.getItem('crm-conexao')) || {}; } catch (e) { return {}; } }
