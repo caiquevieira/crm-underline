@@ -1,0 +1,56 @@
+CRM LOCAL - LEIA-ME
+===================
+
+COMO ABRIR
+- Clique duas vezes em iniciar.bat. Abre uma janela preta (o servidor) e o navegador em http://127.0.0.1:8765
+- Deixe a janela preta aberta enquanto usa o CRM. Para encerrar, feche-a.
+- Funciona offline e só no seu computador (não fica acessível pela rede).
+- Tudo é gravado sozinho no crm.xlsx a cada alteração (veja "Salvo às..." no canto superior direito).
+
+ARQUIVOS
+- crm.xlsx      seus dados (uma aba por lista + aba _Config)
+- backups\      cópias automáticas do crm.xlsx (as 20 mais recentes; no máximo uma a cada 10 min de uso)
+- server.py, index.html, importar.py, iniciar.bat   o programa
+
+BACKUP
+- Automático: pasta backups\. Para restaurar, feche o CRM, copie o backup desejado
+  para esta pasta e renomeie para crm.xlsx.
+- Manual: copie o crm.xlsx (ou a pasta inteira) para outro lugar (pendrive, Google Drive...).
+
+EDITAR NO EXCEL À MÃO (sem quebrar o app)
+- Pode editar, incluir e apagar linhas normalmente. Depois de salvar no Excel, clique em
+  "Recarregar" no CRM.
+- FECHE o Excel antes de mexer no CRM. Com o arquivo aberto no Excel o CRM não consegue gravar:
+  aparece um aviso vermelho, a alteração fica guardada na tela e é gravada quando você fechar o Excel.
+- Se o arquivo mudou no Excel enquanto o CRM estava aberto, o CRM pergunta antes de gravar por cima.
+- Coluna _id (última): não altere. Em linha nova deixe vazia; o CRM preenche. Não copie o _id de outra linha.
+- Datas: digite como data (dd/mm/aaaa).
+- Etapa: use exatamente o nome de uma etapa. Nome novo vira uma etapa nova (aberta).
+  Mudar a etapa pelo Excel NÃO atualiza "Etapa desde"; pelo CRM atualiza.
+- Colunas de seleção: valor novo digitado no Excel vira uma opção nova.
+- "Dias na etapa" é fórmula; o CRM recria a cada gravação.
+- Coluna nova criada no Excel (cabeçalho na linha 1) entra no CRM como texto.
+- Prefira renomear/apagar colunas, etapas e listas pelo CRM (botão "Colunas e etapas"):
+  ele atualiza os registros juntos. Renomear um cabeçalho no Excel faz o CRM tratar como coluna nova.
+- A aba _Config guarda colunas (nome, tipo, opções separadas por ";", ordem, visível) e
+  etapas (nome, tipo aberta/ganha/perdida, ordem, cor). Dá para editar, mas com cuidado.
+- O CRM regrava o arquivo inteiro: cores, larguras e fórmulas suas no Excel não são mantidas
+  (só os valores).
+
+SERVIÇOS VENDIDOS (coluna "Serviços")
+- Cada registro pode ter vários serviços (Landing Page, Tráfego Pago, Social Media...), cada um com
+  cobrança Única ou Mensal e o valor negociado daquele cliente. Clique na célula para editar.
+- O catálogo de serviços e o preço sugerido ficam em "Colunas e etapas" > Catálogo. O preço sugerido
+  só preenche o valor ao incluir o serviço; dá para mudar em cada negociação. Valor vazio = "a definir".
+- "Padrão" da coluna Serviços: serviço incluído automaticamente nos registros novos.
+- Nos Gráficos, a receita aparece separada em única e recorrente (R$/mês), e há "Conversão por serviço".
+- No Excel, a célula "Serviços" é só um resumo (o CRM a refaz). Os itens ficam na aba _Servicos
+  (Lista, _id, Serviço, Cobrança, Valor): para editar no Excel, mexa nessa aba usando o _id do registro.
+
+CELULAR / TELA PEQUENA
+- Em telas estreitas a Tabela vira uma lista de cartões. Toque no cartão para abrir a ficha com todas
+  as colunas. No computador, a ficha abre pelo botão ☰ no fim da linha.
+
+REIMPORTAR A PLANILHA ANTIGA
+  python importar.py "C:\caminho\Controle de Lading Page.xlsx"
+  (substitui a lista "Landing Pages"; o backup é feito antes)

@@ -1,0 +1,1780 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRM</title>
+<script>try { const t = localStorage.getItem('tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+  /* tema: claro em :root, escuro (padrão) em [data-theme=dark]; o botão ☀/☾ alterna */
+  :root { color-scheme: light; --borda:#d9dee5; --fundo:#f6f7f9; --texto:#1f2933; --suave:#6b7280; --azul:#2563eb; --vermelho:#dc2626; --ambar:#d97706;
+    --cartao:#fff; --cabeca:var(--cabeca); --linha:var(--linha); --borda-forte:var(--borda-forte); --hover:var(--hover); --sutil:var(--sutil); --chip:var(--chip); --apagado:var(--apagado);
+    --link:#2563eb; --verde:var(--verde); --bg-vermelho:var(--bg-vermelho); --bg-ambar:var(--bg-ambar); --bg-invalido:var(--bg-invalido); --bg-azul:var(--bg-azul); --borda-vermelha:var(--borda-vermelha);
+    --txt-vermelho:var(--txt-vermelho); --txt-ambar:var(--txt-ambar); --tooltip:#1f2933; --tinta2:#52514e; --grade:#e1e0d9; --eixo:var(--eixo); }
+  :root[data-theme="dark"] { color-scheme: dark; --borda:#2c323b; --fundo:#000; --texto:#e6e8eb; --suave:#9aa3ae; --azul:#2f6fed; --vermelho:#e5484d; --ambar:#d98a0b;
+    --cartao:#111418; --cabeca:#181c21; --linha:#20252c; --borda-forte:#38404b; --hover:#1d2229; --sutil:#14181d; --chip:#272d35; --apagado:#636b76;
+    --link:#7cb3ff; --verde:#4ade80; --bg-vermelho:#3a1416; --bg-ambar:#352508; --bg-invalido:#4a1a1f; --bg-azul:#13274a; --borda-vermelha:#7f2a2e;
+    --txt-vermelho:#fecaca; --txt-ambar:#fde68a; --tooltip:#2a3039; --tinta2:#b4b2a9; --grade:#2a2e34; --eixo:#4a4f57; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; font: 14px system-ui, "Segoe UI", sans-serif; color: var(--texto); background: var(--fundo); }
+  button { font: inherit; color: var(--texto); padding: 5px 10px; border: 1px solid var(--borda); background: var(--cartao); border-radius: 6px; cursor: pointer; }
+  button:hover { background: var(--hover); }
+  button.primario { background: var(--azul); border-color: var(--azul); color: #fff; }
+  button.icone { border: 0; background: none; padding: 2px 6px; color: var(--suave); }
+  button.icone:hover { color: var(--vermelho); background: var(--bg-vermelho); }
+  button:disabled { opacity: .4; cursor: default; }
+  input, select { font: inherit; color: inherit; }
+  .espaco { flex: 1; }
+
+  header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--cartao); border-bottom: 1px solid var(--borda); flex-wrap: wrap; }
+  header strong { font-size: 16px; margin-right: 8px; }
+  .listas { display: flex; gap: 8px; align-items: center; min-width: 0; }
+  #abas { display: flex; gap: 4px; flex-wrap: wrap; }
+  #abas button.ativa { background: var(--texto); color: var(--fundo); border-color: var(--texto); }
+  #status { font-size: 12px; color: var(--suave); }
+  #status.erro { color: var(--vermelho); font-weight: 600; }
+
+  #aviso { margin: 8px 14px 0; padding: 10px 14px; border-radius: 6px; background: var(--bg-vermelho); border: 1px solid var(--borda-vermelha); color: var(--txt-vermelho); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #aviso[hidden] { display: none; }
+
+  #resumo { display: flex; gap: 12px; align-items: stretch; padding: 10px 14px 0; flex-wrap: wrap; }
+  .funil { display: flex; flex: 1; gap: 3px; min-width: 0; align-items: stretch; }
+  .degrau { flex: 1 1 0; min-width: 64px; padding: 6px 8px; border-radius: 4px; overflow: hidden; white-space: nowrap; display: flex; flex-direction: column; justify-content: flex-end; }
+  .degrau b { display: block; font-size: 18px; line-height: 1.1; }
+  .degrau b small { font-size: 12px; font-weight: 600; opacity: .8; margin-left: 5px; }
+  .degrau span { font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; }
+  .degrau.vazio { opacity: .45; }
+  .grupo-oferta { display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px dashed #94a3b8; border-radius: 6px; min-width: 0; }
+  .grupo-oferta .topo { font-size: 11px; color: var(--suave); padding: 0 4px; white-space: nowrap; }
+  .grupo-oferta .topo b { color: var(--texto); font-size: 13px; }
+  .grupo-oferta .etapas { display: flex; gap: 3px; flex: 1; }
+  .atrasados, .cartao { padding: 6px 12px; border-radius: 4px; background: var(--cartao); border: 1px solid var(--borda); text-align: center; white-space: nowrap; display: flex; flex-direction: column; justify-content: center; }
+  .atrasados.tem { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+  .atrasados { cursor: pointer; }
+  .atrasados.alerta.tem { background: var(--ambar); border-color: var(--ambar); }
+  .atrasados b, .cartao b { display: block; font-size: 18px; line-height: 1.1; }
+  .atrasados span, .cartao span { font-size: 11px; }
+  .cartao span { color: var(--suave); }
+
+  .barra { display: flex; align-items: center; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
+  #busca { padding: 5px 10px; border: 1px solid var(--borda); border-radius: 6px; width: 240px; }
+  #contagem { color: var(--suave); font-size: 12px; }
+
+  #tabelaWrap { flex: 1; overflow: auto; margin: 0 14px 14px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 6px; }
+  table.dados { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+  .dados th, .dados td { border-bottom: 1px solid var(--linha); border-right: 1px solid var(--linha); padding: 0; vertical-align: middle; }
+  .dados thead th { position: sticky; background: var(--cabeca); z-index: 2; text-align: left; font-weight: 600; }
+  /* primeira coluna fixa ao rolar para os lados */
+  .dados thead th:first-child { left: 0; z-index: 3; }
+  .dados tbody td:first-child:not([colspan]) { position: sticky; left: 0; z-index: 1; background: var(--cartao); }
+  .dados th:first-child, .dados tbody td:first-child:not([colspan]) { border-right-color: var(--borda-forte); }
+  .dados thead tr:first-child th { top: 0; padding: 7px 8px; cursor: pointer; user-select: none; white-space: nowrap; }
+  .dados thead tr:nth-child(2) th { top: 33px; padding: 3px; }
+  .dados thead th .seta { color: var(--azul); }
+  .filtro { width: 100%; padding: 3px 5px; border: 1px solid var(--borda); border-radius: 4px; font-size: 12px; background: var(--cartao); font-weight: normal; }
+  button.filtro.multi { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; color: var(--suave); }
+  button.filtro.multi::after { content: ' ▾'; }
+  button.filtro.multi.ativo { color: var(--azul); border-color: var(--azul); background: var(--bg-azul); font-weight: 600; }
+  #menuFiltro { position: fixed; margin: 0; inset: auto; padding: 6px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); box-shadow: 0 8px 24px rgba(0,0,0,.15); max-height: 60vh; overflow: auto; font-size: 13px; }
+  #menuFiltro .mf-topo { display: flex; gap: 6px; padding: 0 0 6px; margin-bottom: 4px; border-bottom: 1px solid var(--linha); }
+  #menuFiltro .mf-topo button { padding: 2px 8px; font-size: 12px; }
+  #menuFiltro label { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+  #menuFiltro label:hover { background: var(--hover); }
+  #menuFiltro label span { flex: 1; }
+  #menuFiltro label small { color: var(--suave); }
+  .dados td input[type=text], .dados td select { width: 100%; border: 1px solid transparent; background: transparent; padding: 6px 7px; border-radius: 0; }
+  .dados td input[type=text]:hover, .dados td select:hover { border-color: var(--borda); }
+  .dados td input[type=text]:focus, .dados td select:focus { border-color: var(--azul); background: var(--cartao); outline: none; }
+  .dados td input[type=checkbox] { display: block; margin: 0 auto; width: 16px; height: 16px; }
+  .dados td input::placeholder { color: transparent; }
+  .dados td input:focus::placeholder { color: var(--apagado); }
+  .dados td input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
+  .dados td select.etapa { font-weight: 600; }
+  .dados td .dias { display: block; padding: 6px 8px; text-align: right; color: var(--suave); }
+  .comLink { display: flex; align-items: center; }
+  .comLink a { padding: 0 8px; text-decoration: none; font-size: 13px; white-space: nowrap; }
+  .comLink a.whats { color: var(--verde); font-weight: 600; font-size: 11px; }
+  .t-texto, .t-proxima_acao { min-width: 170px; }
+  .t-url { min-width: 230px; }
+  .t-selecao { min-width: 140px; }
+  .t-telefone { min-width: 230px; }
+  .t-etapa { min-width: 160px; }
+  .t-data, .t-etapa_desde, .t-data_proxima_acao { width: 105px; }
+  .t-numero { width: 90px; }
+  .t-numero input { text-align: right; }
+  .t-caixa { width: 60px; }
+  .t-dias_na_etapa { width: 70px; }
+  td.acoes { width: 60px; text-align: center; white-space: nowrap; }
+  button.icone.abrir:hover { color: var(--azul); background: var(--bg-azul); }
+  tr.atrasado td, .dados tbody tr.atrasado td:first-child { background: var(--bg-vermelho); }
+  tr.atrasado td:first-child { box-shadow: inset 3px 0 0 var(--vermelho); }
+  tr.alerta td, .dados tbody tr.alerta td:first-child { background: var(--bg-ambar); }
+  tr.alerta td:first-child { box-shadow: inset 3px 0 0 var(--ambar); }
+  tr.grupo td { padding: 6px 10px; font-weight: 600; background: var(--sutil); }
+  tr.grupo .bolinha { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  tr.grupo .n { color: var(--suave); font-weight: normal; margin-left: 6px; }
+  td.nada { padding: 24px; text-align: center; color: var(--suave); }
+
+  dialog { background: var(--cartao); color: var(--texto); border: 1px solid var(--borda); border-radius: 8px; padding: 0; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  dialog::backdrop { background: rgba(15,23,42,.35); }
+  #caixa form { padding: 18px; min-width: min(340px, 86vw); display: flex; flex-direction: column; gap: 12px; }
+  #caixa p { margin: 0; white-space: pre-line; }
+  #caixa input, #caixa select { padding: 6px 8px; border: 1px solid var(--borda); border-radius: 6px; }
+  .botoes { display: flex; justify-content: flex-end; gap: 8px; }
+
+  #gerenciador { width: min(1100px, 96vw); max-height: 92vh; }
+  .g-topo { display: flex; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: var(--cartao); z-index: 2; }
+  .g-topo h2 { margin: 0; font-size: 16px; flex: 1; }
+  .g-corpo { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 16px 18px; }
+  .g-corpo h3 { margin: 0 0 8px; font-size: 14px; }
+  .g-corpo table { border-collapse: collapse; width: 100%; }
+  .g-corpo td { padding: 3px 3px; vertical-align: middle; }
+  .g-corpo td input[type=text], .g-corpo select { width: 100%; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 4px; }
+  .g-corpo input[type=color] { width: 34px; height: 28px; padding: 0 2px; border: 1px solid var(--borda); border-radius: 4px; background: var(--cartao); }
+  .g-corpo .mover { white-space: nowrap; width: 1%; }
+  .g-corpo .mover button { padding: 2px 6px; }
+  .g-corpo button { white-space: nowrap; }
+  .g-corpo select { min-width: 92px; }
+  .g-corpo .sis { font-size: 11px; color: var(--suave); }
+  .g-corpo .uso { font-size: 12px; color: var(--suave); white-space: nowrap; }
+  .g-corpo tr.opcoes > td { background: var(--sutil); padding: 8px 10px 10px 40px; }
+  .adicionar { display: flex; gap: 6px; margin-top: 10px; }
+  .adicionar input { flex: 1; padding: 5px 8px; border: 1px solid var(--borda); border-radius: 6px; }
+  .adicionar select { padding: 5px 8px; border: 1px solid var(--borda); border-radius: 6px; }
+
+  .visoes { display: flex; margin-left: 6px; }
+  #btnTema { padding: 5px 9px; }
+  .visoes button { border-radius: 0; }
+  .visoes button:first-child { border-radius: 6px 0 0 6px; }
+  .visoes button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+  .visoes button.ativa { background: var(--azul); border-color: var(--azul); color: #fff; }
+  .barra[hidden], #tabelaWrap[hidden], #cartoes[hidden], #graficos[hidden], #hoje[hidden] { display: none; }
+
+  /* aba Hoje */
+  #hoje { flex: 1; overflow: auto; padding: 10px 14px 14px; }
+  .bloco { margin-bottom: 18px; }
+  .bloco h2 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .bloco h2 .n { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: var(--chip); }
+  .bloco h2 small { font-weight: normal; color: var(--suave); font-size: 12px; }
+  .bloco.vermelho h2 .n { background: var(--vermelho); color: #fff; }
+  .bloco.ambar h2 .n { background: var(--ambar); color: #fff; }
+  .bloco.azul h2 .n { background: var(--azul); color: #fff; }
+  .bloco > .nada { margin: 0; padding: 10px 12px; color: var(--suave); font-size: 13px; background: var(--cartao); border: 1px dashed var(--borda); border-radius: 6px; }
+  .item { display: grid; grid-template-columns: minmax(230px, 1.1fr) minmax(360px, 2fr) auto; gap: 8px 14px; align-items: center;
+    background: var(--cartao); border: 1px solid var(--borda); border-left-width: 4px; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; }
+  .vermelho .item { border-left-color: var(--vermelho); }
+  .ambar .item { border-left-color: var(--ambar); }
+  .azul .item { border-left-color: var(--azul); }
+  .cinza .item { border-left-color: #94a3b8; }
+  .item .emp { min-width: 0; }
+  .item .emp b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 4px; font-size: 12px; color: var(--suave); }
+  .item .meta select.etapa { font: inherit; font-weight: 600; border: 0; border-radius: 4px; padding: 2px 4px; }
+  .item .meta .detalhe { color: var(--texto); font-weight: 600; }
+  .item .acao { display: flex; gap: 6px; }
+  .item .acao input { padding: 5px 7px; border: 1px solid var(--borda); border-radius: 4px; min-width: 0; }
+  .item .acao input.txt { flex: 1; }
+  .item .acao input.dt { width: 100px; }
+  .item .acao input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
+  .links { display: flex; gap: 6px; white-space: nowrap; }
+  .links a { font-size: 12px; text-decoration: none; padding: 4px 8px; border: 1px solid var(--borda); border-radius: 4px; color: var(--link); }
+  .links a.whats { color: var(--verde); font-weight: 600; }
+  .links .falta { font-size: 11px; color: var(--apagado); padding: 4px 2px; }
+  .item .mover { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; font-size: 12px; }
+  .item .mover button.perigo { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+  @media (max-width: 1000px) { .item { grid-template-columns: 1fr; } }
+
+  /* tabelas de conversão (aba Gráficos) */
+  table.conv { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .conv th, .conv td { padding: 5px 8px; border-bottom: 1px solid var(--linha); text-align: left; white-space: nowrap; }
+  .conv thead th { color: var(--tinta2); font-weight: 600; }
+  .conv th:not(:first-child), .conv td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .conv tfoot td { font-weight: 600; border-top: 1px solid var(--eixo); border-bottom: 0; }
+  .card .rolar { overflow-x: auto; }
+  .card.largo { grid-column: 1 / -1; }
+  .tiles.dinheiro .tile b { font-size: 24px; }
+  .g-corpo input.curto { width: 70px; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 4px; }
+
+  /* gráficos: cores validadas (dataviz) — venda, em oferta, antes da oferta, perdido */
+  #graficos { --s-venda: #1baf7a; --s-oferta: #eb6834; --s-antes: #2a78d6; --s-perdido: #e34948;
+    flex: 1; overflow: auto; padding: 10px 14px 14px; }
+  .g-nota { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--suave); margin-bottom: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .tile { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 12px 14px; }
+  .tile span { display: block; font-size: 12px; color: var(--tinta2); }
+  .tile b { display: block; font-size: 28px; font-weight: 600; line-height: 1.25; }
+  .tile small { font-size: 12px; color: var(--suave); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 12px; }
+  .card { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+  .card h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .card h3 select { font: inherit; font-size: 13px; font-weight: 600; padding: 2px 4px; border: 1px solid var(--borda); border-radius: 4px; }
+  .card .sub { margin: 2px 0 12px; font-size: 12px; color: var(--suave); }
+  .card .vazio { color: var(--suave); font-size: 13px; padding: 16px 0; }
+  .legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--tinta2); margin-bottom: 10px; }
+  .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .hb { display: grid; grid-template-columns: minmax(80px, max-content) 1fr; gap: 6px 10px; align-items: center; font-size: 12px; }
+  .hb .rot { text-align: right; color: var(--tinta2); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hb .trilho { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .hb .barras { display: flex; gap: 2px; height: 18px; }
+  .hb .seg { height: 100%; min-width: 3px; }
+  .hb .seg:last-child { border-radius: 0 4px 4px 0; }
+  .hb .val { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hb .val small { color: var(--suave); margin-left: 4px; }
+  .colunas { display: flex; align-items: flex-end; gap: 4px; height: 170px; border-bottom: 1px solid var(--eixo); padding-top: 18px; }
+  .colunas .col { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; min-width: 0; }
+  .colunas .col .c { width: min(24px, 80%); background: var(--s-antes); border-radius: 4px 4px 0 0; }
+  .colunas .col .n { font-size: 11px; font-variant-numeric: tabular-nums; }
+  .eixo-x { display: flex; gap: 4px; margin-top: 4px; }
+  .eixo-x span { flex: 1; text-align: center; font-size: 10px; color: var(--suave); white-space: nowrap; overflow: hidden; }
+  #dica { position: fixed; z-index: 20; pointer-events: none; background: var(--tooltip); color: #fff; font-size: 12px; padding: 6px 9px; border-radius: 6px; white-space: pre-line; max-width: 280px; }
+  #dica[hidden] { display: none; }
+
+  /* serviços vendidos */
+  .t-servicos { min-width: 240px; }
+  .sv-celula { display: block; width: 100%; max-width: 360px; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 0; padding: 6px 7px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sv-celula:hover { border-color: var(--borda); background: var(--cartao); }
+  .sv-celula .sv-total { color: var(--suave); }
+  .sv-celula.vazio { color: var(--apagado); }
+  .servicos { display: flex; flex-direction: column; gap: 6px; }
+  .sv-item { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(90px, .7fr) minmax(100px, .8fr) auto; gap: 6px; align-items: center; }
+  .sv-item select, .sv-item input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); }
+  .sv-item input { text-align: right; }
+  .sv-item input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
+  .sv-rodape { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .sv-rodape select { padding: 6px 8px; border: 1px dashed var(--azul); border-radius: 6px; color: var(--azul); background: var(--cartao); }
+  .sv-soma { font-weight: 600; }
+  .sv-vazio { margin: 0; color: var(--suave); font-size: 13px; }
+  #dlgServicos { width: min(640px, 96vw); }
+  .sv-corpo { padding: 16px 18px; }
+
+  /* ficha do registro (todas as colunas num formulário) */
+  #ficha { width: min(760px, 96vw); max-height: 92vh; }
+  .f-aviso { margin: 12px 18px 0; padding: 8px 12px; border-radius: 6px; background: var(--bg-ambar); color: var(--txt-ambar); font-size: 13px; }
+  .f-corpo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; padding: 14px 18px; }
+  .f-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .f-campo.largo { grid-column: 1 / -1; }
+  .f-campo > span { font-size: 12px; font-weight: 600; color: var(--suave); }
+  .f-campo input[type=text], .f-campo > select { width: 100%; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); }
+  .f-campo input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
+  .f-campo input[type=checkbox] { width: 18px; height: 18px; }
+  .f-campo select.etapa { font-weight: 600; }
+  .f-campo .comLink { gap: 4px; }
+  .f-campo .comLink a { padding: 6px 8px; }
+  .f-campo .dias { padding: 7px 0; }
+  .f-rodape { display: flex; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--borda); position: sticky; bottom: 0; background: var(--cartao); }
+  button.perigo { background: var(--cartao); border-color: var(--borda-vermelha); color: var(--vermelho); }
+
+  /* registros em cartões (celular) */
+  #cartoes { flex: 1; overflow: auto; padding: 0 12px 12px; }
+  .reg { display: flex; flex-direction: column; gap: 6px; background: var(--cartao); border: 1px solid var(--borda); border-left: 4px solid var(--borda); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+  .reg.atrasado { border-left-color: var(--vermelho); background: var(--bg-vermelho); }
+  .reg.alerta { border-left-color: var(--ambar); background: var(--bg-ambar); }
+  .reg .r-topo { display: flex; gap: 8px; align-items: center; }
+  .reg .r-topo b { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reg select.etapa { max-width: 55%; font-weight: 600; border: 0; border-radius: 4px; padding: 4px 6px; }
+  .reg .r-linha { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 13px; color: var(--suave); }
+  .reg .r-linha .forte { color: var(--texto); }
+  .reg .links { flex-wrap: wrap; }
+  .reg .links a, .reg .links button { font-size: 13px; padding: 6px 10px; }
+  .grupo-cel { display: flex; align-items: center; gap: 6px; padding: 10px 2px 6px; font-weight: 600; }
+  .grupo-cel .bolinha { width: 10px; height: 10px; border-radius: 50%; }
+  .grupo-cel .n { color: var(--suave); font-weight: normal; }
+  #cartoes > .nada { padding: 24px; text-align: center; color: var(--suave); }
+  #filtrosCel { display: flex; gap: 6px; flex: 1 1 100%; }
+  #filtrosCel span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--suave); }
+  #filtrosCel button.filtro { padding: 7px 8px; font-size: 14px; }
+
+  @media (min-width: 701px) { .so-celular { display: none !important; } }
+  @media (max-width: 900px) { .g-corpo { grid-template-columns: 1fr; } .g-corpo section { min-width: 0; overflow-x: auto; } }
+  @media (max-width: 700px) {
+    .so-desktop { display: none !important; }
+    input, select, textarea { font-size: 16px; } /* evita o zoom automático do iPhone ao tocar no campo */
+    html, body { height: auto; } /* a página inteira rola, não só a área de baixo */
+    #cartoes, #hoje, #graficos { flex: none; overflow: visible; }
+    header { padding: 8px 12px; gap: 6px; position: sticky; top: 0; z-index: 5; }
+    header > .espaco { display: none; }
+    #status { order: 1; flex: 1; text-align: right; }
+    #btnTema, #btnRecarregar, #btnSair { order: 2; }
+    .listas { order: 3; flex: 1 1 100%; }
+    #abas { flex: 1; flex-wrap: nowrap; overflow-x: auto; }
+    #abas button { white-space: nowrap; }
+    .visoes { order: 4; flex: 1 1 100%; margin: 0; }
+    .visoes button { flex: 1; padding: 8px; }
+    #aviso { margin: 8px 12px 0; }
+    #resumo { flex-wrap: nowrap; overflow-x: auto; padding: 8px 12px 2px; gap: 8px; }
+    #resumo > *, .funil > *, .grupo-oferta .etapas > * { flex: 0 0 auto !important; }
+    .funil { flex: none; }
+    .degrau { min-width: 76px; }
+    .barra { padding: 8px 12px; gap: 6px; }
+    #busca { flex: 1 1 100%; width: auto; padding: 8px 10px; }
+    .barra .espaco { display: none; }
+    .barra button { padding: 7px 10px; }
+    #hoje, #graficos { padding: 8px 12px 12px; }
+    .item { padding: 10px; }
+    .item .acao { flex-wrap: wrap; }
+    .item .acao input.txt { flex: 1 1 100%; }
+    .item .acao input.dt { flex: 1; width: auto; }
+    .item .links, .item .mover { flex-wrap: wrap; }
+    .tiles { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tile { padding: 10px 12px; }
+    .tile b, .tiles.dinheiro .tile b { font-size: 20px; }
+    .hb .rot { max-width: 110px; }
+    #ficha, #gerenciador, #dlgServicos { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; border-radius: 0; border: 0; }
+    .f-corpo { grid-template-columns: 1fr; padding: 12px; }
+    .sv-corpo { padding: 12px; }
+    .sv-item { grid-template-columns: 1fr 1fr auto; }
+    .sv-item select.sv-nome { grid-column: 1 / -1; }
+    .g-corpo td input[type=text]:not(.curto) { min-width: 130px; }
+    .g-topo { padding: 10px 12px; }
+    .g-corpo { padding: 12px; }
+  }
+
+  #conectar form { padding: 18px; width: min(420px, 90vw); display: flex; flex-direction: column; gap: 12px; }
+  #conectar h2 { margin: 0; font-size: 16px; }
+  #conectar p { margin: 0; color: var(--suave); }
+  #conectar label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--suave); }
+  #conectar label[hidden] { display: none; }
+  #conectar input { padding: 8px 10px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); font-weight: normal; }
+  #toast { margin: 0; inset: auto auto 20px 50%; transform: translateX(-50%); border: 0; padding: 10px 16px; border-radius: 6px; background: var(--tooltip); color: #fff; }
+  #toast.erro { background: var(--vermelho); }
+</style>
+</head>
+<body>
+<header>
+  <strong>CRM</strong>
+  <div class="listas"><nav id="abas"></nav>
+  <button id="btnNovaLista" title="Criar nova lista (aba no Excel)">+ Lista</button></div>
+  <span class="visoes"><button id="vHoje" class="ativa">Hoje</button><button id="vTabela">Tabela</button><button id="vGraficos">Gráficos</button></span>
+  <span class="espaco"></span>
+  <span id="status"></span>
+  <button id="btnTema" title="Alternar tema claro/escuro">☀</button>
+  <button id="btnRecarregar" title="Ler os dados de novo">Recarregar</button>
+  <button id="btnSair" title="Esquecer a chave de acesso neste aparelho" hidden>Sair</button>
+</header>
+<div id="aviso" hidden></div>
+<section id="resumo"></section>
+<div id="hoje"></div>
+<div class="barra" hidden>
+  <input id="busca" type="search" placeholder="Buscar em todas as colunas…">
+  <div id="filtrosCel" class="so-celular"></div>
+  <label><input type="checkbox" id="agrupar"> Agrupar por etapa</label>
+  <button id="btnLimpar">Limpar filtros</button>
+  <span id="contagem"></span>
+  <span class="espaco"></span>
+  <button id="btnRenomearLista">Renomear lista</button>
+  <button id="btnGerenciar">Colunas e etapas</button>
+  <button id="btnNovo" class="primario">+ Registro</button>
+</div>
+<div id="tabelaWrap" class="so-desktop" hidden><table class="dados"><thead id="cabecalho"></thead><tbody id="corpo"></tbody></table></div>
+<div id="cartoes" class="so-celular" hidden></div>
+<div id="graficos" hidden></div>
+<div id="dica" hidden></div>
+
+<dialog id="caixa">
+  <form method="dialog">
+    <p id="cxMsg"></p>
+    <input id="cxTexto" type="text">
+    <select id="cxEscolha"></select>
+    <div class="botoes">
+      <button type="button" id="cxCancelar">Cancelar</button>
+      <button value="ok" class="primario">OK</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="gerenciador"></dialog>
+<dialog id="ficha"></dialog>
+<dialog id="conectar">
+  <form method="dialog">
+    <h2>Conectar à planilha</h2>
+    <p id="cnMsg"></p>
+    <label id="cnUrlRot">Endereço do app (Apps Script)<input id="cnUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec"></label>
+    <label>Chave de acesso<input id="cnChave" type="password" autocomplete="current-password" required></label>
+    <div class="botoes"><button value="ok" class="primario">Conectar</button></div>
+  </form>
+</dialog>
+<dialog id="dlgServicos"></dialog>
+<div id="toast" popover="manual"></div>
+<div id="menuFiltro" popover="auto"></div>
+
+<script>
+'use strict';
+const TIPOS = { texto: 'Texto', numero: 'Número', data: 'Data', selecao: 'Seleção', url: 'URL', telefone: 'Telefone', caixa: 'Caixa de seleção', servicos: 'Serviços (com valores)' };
+const COBRANCA = { unico: 'Único', mensal: 'Mensal' };
+const celular = matchMedia('(max-width: 700px)'); // tela estreita: registros em cartões em vez da tabela
+const SISTEMA = { etapa: 'etapa', proxima_acao: 'próxima ação', data_proxima_acao: 'data da próxima ação', etapa_desde: 'automática', dias_na_etapa: 'automática' };
+const TIPOS_DATA = ['data', 'etapa_desde', 'data_proxima_acao'];
+const TIPOS_ETAPA = { aberta: 'Aberta', ganha: 'Ganha', perdida: 'Perdida' };
+const CORES = ['#60a5fa', '#38bdf8', '#a78bfa', '#f472b6', '#fbbf24', '#fb923c', '#34d399', '#94a3b8'];
+
+let D = null;            // { listas, mtime } vindo do servidor
+let atual = 0;           // índice da lista aberta
+let V = { busca: '', filtros: {}, ordem: null, dir: 1, agrupar: false };
+let sujo = false, salvando = false, pendente = false, timer = null;
+let opcoesAbertas = null; // coluna com o editor de opções aberto no gerenciador
+
+// ---------- utilidades ----------
+const $ = s => document.querySelector(s);
+function el(tag, props = {}, ...filhos) {
+  const e = Object.assign(document.createElement(tag), props);
+  e.append(...filhos.filter(f => f != null));
+  return e;
+}
+const L = () => D.listas[atual];
+const colDo = tipo => L().colunas.find(c => c.tipo === tipo);
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const mesmoNome = (a, b) => a.toLowerCase() === b.toLowerCase();
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+const hoje = () => iso(new Date());
+const ehData = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+function br(s) { return ehData(s) ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : (s ?? ''); }
+function deBR(t) { // '' -> null, inválida -> undefined
+  t = t.trim();
+  if (!t) return null;
+  const m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/.exec(t);
+  if (!m) return undefined;
+  let a = m[3] ? +m[3] : new Date().getFullYear();
+  if (a < 100) a += 2000;
+  const d = new Date(a, m[2] - 1, m[1]);
+  return d.getMonth() === m[2] - 1 && d.getDate() === +m[1] ? iso(d) : undefined;
+}
+function dias(s) {
+  if (!ehData(s)) return null;
+  const t = new Date(), [a, m, d] = s.split('-').map(Number);
+  return Math.round((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) - Date.UTC(a, m - 1, d)) / 864e5);
+}
+function deNumero(t) { // '' -> null, inválido -> undefined
+  t = String(t).trim();
+  if (!t) return null;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = Number(t);
+  return Number.isFinite(n) ? n : undefined;
+}
+function urlCompleta(v) {
+  v = v.trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  return /^[a-z][a-z0-9+.-]*:/i.test(v) ? null : 'https://' + v;
+}
+function whats(v) {
+  let n = v.replace(/\D/g, '');
+  if (n.length === 10 || n.length === 11) n = '55' + n;
+  return n.length >= 10 ? 'https://wa.me/' + n : null;
+}
+function corTexto(hex) {
+  const n = parseInt((hex || '#999999').slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#111827' : '#ffffff';
+}
+// ---------- regras do funil ----------
+const etapaDe = r => L().etapas.find(e => e.nome === r[colDo('etapa').nome]);
+// fase: "producao" (antes do contato), "ativa" (venda ativa) ou "final" (ganha/perdida)
+const fase = e => !e ? null : e.tipo !== 'aberta' ? 'final' : e.producao ? 'producao' : 'ativa';
+const faseDe = r => fase(etapaDe(r));
+const ehRecusa = r => { const e = etapaDe(r); return !!(e && e.tipo === 'perdida' && e.oferta); }; // perdida depois da oferta
+const colPor = re => L().colunas.find(c => re.test(c.nome));
+const colMotivo = () => colPor(/^motivo/i);
+const colFim = () => colPor(/^data fim$/i);
+const colValor = () => L().colunas.find(c => c.tipo === 'numero' && /valor/i.test(c.nome));
+const colWhats = () => L().colunas.find(c => c.tipo === 'telefone');
+
+// ---------- serviços vendidos ----------
+// Coluna do tipo "servicos": cada registro tem uma lista de itens { servico, cobranca: 'unico'|'mensal', valor? }.
+// O catálogo (c.servicos) tem o preço sugerido de cada serviço; o valor negociado fica no item.
+const colServicos = () => L().colunas.find(c => c.tipo === 'servicos');
+const itensDe = r => { const c = colServicos(); return c && Array.isArray(r[c.nome]) ? r[c.nome] : []; };
+const catalogo = (c, nome) => (c.servicos || []).find(s => s.nome === nome);
+const itemDe = s => ({ servico: s.nome, cobranca: s.cobranca, ...(typeof s.preco === 'number' ? { valor: s.preco } : {}) });
+function somaItens(itens) {
+  const s = { unico: 0, mensal: 0 };
+  for (const i of itens) if (typeof i.valor === 'number') s[i.cobranca === 'mensal' ? 'mensal' : 'unico'] += i.valor;
+  return s;
+}
+// { unico, mensal } do registro; lista sem coluna de serviços usa a coluna numérica "Valor" como valor único
+function valoresDe(r) {
+  if (colServicos()) return somaItens(itensDe(r));
+  const cv = colValor();
+  return { unico: cv && typeof r[cv.nome] === 'number' ? r[cv.nome] : 0, mensal: 0 };
+}
+function somaValores(lista, fn = valoresDe) {
+  const s = { unico: 0, mensal: 0 };
+  for (const r of lista) { const v = fn(r); s.unico += v.unico; s.mensal += v.mensal; }
+  return s;
+}
+function fmtValores(v, vazio = '–') {
+  const p = [v.unico ? brl(v.unico) : null, v.mensal ? brl(v.mensal) + '/mês' : null].filter(Boolean);
+  return p.length ? p.join(' + ') : vazio;
+}
+const fmtItem = i => `${i.servico}: ${typeof i.valor === 'number' ? brl(i.valor) + (i.cobranca === 'mensal' ? '/mês' : '') : 'valor a definir'}`;
+const resumoServicos = itens => itens.length ? itens.map(i => i.servico).join(' + ') + ' · ' + fmtValores(somaItens(itens), 'a definir') : '';
+function nomesServicos(c) { // catálogo + nomes usados nos registros que não estão nele
+  const ns = (c.servicos || []).map(s => s.nome);
+  for (const r of L().registros) for (const i of r[c.nome] || []) if (!ns.includes(i.servico)) ns.push(i.servico);
+  return ns;
+}
+// valores de um registro para os filtros de várias opções (serviços: um por item)
+function valoresFiltro(r, c) {
+  if (c.tipo === 'caixa') return [r[c.nome] ? 'sim' : 'não'];
+  if (c.tipo === 'servicos') { const ns = (r[c.nome] || []).map(i => i.servico); return ns.length ? ns : ['__vazio']; }
+  return [r[c.nome] || '__vazio'];
+}
+
+// editor dos itens de um registro: serviço, cobrança e valor negociado
+function editorServicos(r, c) {
+  const caixa = el('div', { className: 'servicos' });
+  const lista = () => Array.isArray(r[c.nome]) ? r[c.nome] : [];
+  const total = el('span', { className: 'sv-soma' });
+  const mostrarTotal = () => { total.textContent = lista().length ? 'Total: ' + fmtValores(somaItens(lista()), 'a definir') : ''; };
+  const mudou = () => { if (!lista().length) delete r[c.nome]; mostrarTotal(); salvar(); renderResumo(); };
+  const opcoes = atual => { const ns = (c.servicos || []).map(s => s.nome); if (atual && !ns.includes(atual)) ns.push(atual); return ns.map(n => el('option', { value: n, textContent: n })); };
+  const desenhar = () => {
+    const linhas = lista().map((it, i) => {
+      const sNome = el('select', { className: 'sv-nome', title: 'Serviço', onchange: () => {
+        it.servico = sNome.value;
+        const s = catalogo(c, it.servico);
+        if (s) { it.cobranca = s.cobranca; if (it.valor == null && typeof s.preco === 'number') it.valor = s.preco; }
+        mudou(); desenhar();
+      } }, ...opcoes(it.servico));
+      sNome.value = it.servico;
+      const sCob = el('select', { title: 'Cobrança', onchange: () => { it.cobranca = sCob.value; mudou(); } },
+        ...Object.entries(COBRANCA).map(([v, t]) => el('option', { value: v, textContent: t })));
+      sCob.value = it.cobranca === 'mensal' ? 'mensal' : 'unico';
+      const valor = el('input', { type: 'text', inputMode: 'decimal', placeholder: 'R$ a definir', title: 'Valor negociado (R$)',
+        value: it.valor == null ? '' : String(it.valor).replace('.', ','), onchange: () => {
+          const x = deNumero(valor.value);
+          valor.classList.toggle('invalido', x === undefined);
+          if (x === undefined) return toast('Valor inválido. Ex.: 1500 ou 1.500,00');
+          if (x == null) delete it.valor; else it.valor = x;
+          valor.value = x == null ? '' : String(x).replace('.', ',');
+          mudou();
+        } });
+      return el('div', { className: 'sv-item' }, sNome, sCob, valor,
+        el('button', { type: 'button', className: 'icone', textContent: '✕', title: 'Remover serviço', onclick: () => { lista().splice(i, 1); mudou(); desenhar(); } }));
+    });
+    const add = el('select', { onchange: async () => {
+      let nome = add.value;
+      add.value = '';
+      if (nome === '__novo') {
+        nome = await pedirTexto('Nome do novo serviço (entra no catálogo desta lista):');
+        if (!nome) return;
+        const existente = (c.servicos || []).find(s => mesmoNome(s.nome, nome));
+        if (existente) nome = existente.nome; else (c.servicos ||= []).push({ nome, cobranca: 'unico', preco: null });
+      }
+      r[c.nome] = [...lista(), itemDe(catalogo(c, nome))];
+      mudou(); desenhar();
+      [...caixa.querySelectorAll('.sv-item input')].at(-1)?.focus();
+    } }, el('option', { value: '', textContent: '+ Adicionar serviço…' }),
+      ...(c.servicos || []).map(s => el('option', { value: s.nome, textContent: s.nome + (typeof s.preco === 'number' ? ` (${brl(s.preco)}${s.cobranca === 'mensal' ? '/mês' : ''})` : '') })),
+      el('option', { value: '__novo', textContent: 'Outro serviço…' }));
+    mostrarTotal();
+    caixa.replaceChildren(...linhas, ...(linhas.length ? [] : [el('p', { className: 'sv-vazio', textContent: 'Nenhum serviço ainda.' })]), el('div', { className: 'sv-rodape' }, add, total));
+  };
+  desenhar();
+  return caixa;
+}
+function abrirServicos(r, c) {
+  const d = $('#dlgServicos');
+  d.replaceChildren(
+    el('div', { className: 'g-topo' }, el('h2', { textContent: `Serviços — ${r[L().colunas[0].nome] || '(sem nome)'}` }), el('button', { textContent: 'Fechar', onclick: () => d.close() })),
+    el('div', { className: 'sv-corpo' }, editorServicos(r, c)));
+  d.showModal();
+}
+const colLink = () => L().colunas.find(c => c.tipo === 'url' && /link/i.test(c.nome)) || L().colunas.find(c => c.tipo === 'url');
+
+// ---------- mensagem de abordagem no WhatsApp ----------
+// Campo sem valor fica como [nota], [bairro]... para completar no próprio WhatsApp antes de enviar.
+function bairroDoEndereco(v) {
+  // formato do Google: "R. X, 123 - Centro, Osasco - SP, 06010-000"
+  const p = String(v).split(' - ');
+  return p.length > 1 ? p[1].split(',')[0].trim() : '';
+}
+function clienteDoNicho(r) {
+  const cs = colPor(/^segmento|^nicho/i);
+  const seg = cs && r[cs.nome];
+  if (!seg) return '';
+  const ganhos = L().registros.filter(x => x !== r && x[cs.nome] === seg && etapaDe(x)?.tipo === 'ganha');
+  const cl = colLink(), comLP = ganhos.find(x => cl && x[cl.nome]) || ganhos[0];
+  return comLP ? comLP[L().colunas[0].nome] || '' : '';
+}
+function abordagem(r) {
+  const cw = colWhats(), base = cw && r[cw.nome] ? whats(r[cw.nome]) : null;
+  if (!base) return null;
+  const val = re => { const c = colPor(re); const v = c && r[c.nome]; return v == null ? '' : String(v).trim(); };
+  const ce = colPor(/^endere/i);
+  const nota = val(/^nota/i), aval = val(/avalia/i);
+  const servico = val(/^servi/i) || val(/^segmento|^nicho/i).toLowerCase();
+  const bairro = val(/^bairro/i) || (ce && r[ce.nome] ? bairroDoEndereco(r[ce.nome]) : '');
+  const f = (v, rotulo) => v || `[${rotulo}]`;
+  const msg = `Oi, é da ${f(String(r[L().colunas[0].nome] || '').trim(), 'empresa')}? ` +
+    `Vi vocês no Google com ${f(nota.replace('.', ','), 'nota')} e ${f(aval, 'avaliações')} avaliações, ` +
+    `mas quem pesquisa ‘${f(servico, 'serviço')} ${f(bairro, 'bairro')}’ não encontra um site de vocês. ` +
+    `Fiz a página da ${f(clienteDoNicho(r), 'cliente do mesmo nicho')} aqui na região. Posso te mostrar como ficou?`;
+  return base + '?text=' + encodeURIComponent(msg);
+}
+const diasNaEtapa = r => dias(r[colDo('etapa_desde').nome]);
+
+function atrasado(r) {
+  const v = r[colDo('data_proxima_acao').nome];
+  return ehData(v) && v < hoje() && faseDe(r) !== 'final';
+}
+function semProximaAcao(r) {
+  return faseDe(r) === 'ativa' && (!r[colDo('proxima_acao').nome] || !ehData(r[colDo('data_proxima_acao').nome]));
+}
+function semMotivo(r) {
+  const e = etapaDe(r), cm = colMotivo();
+  return !!(e && e.tipo === 'perdida' && cm && !r[cm.nome]);
+}
+function parado(r) {
+  const e = etapaDe(r), d = diasNaEtapa(r);
+  return !!(e && e.limite && fase(e) !== 'final' && d != null && d > e.limite);
+}
+function avisos(r) {
+  return [atrasado(r) && 'Próxima ação atrasada', semProximaAcao(r) && 'Venda ativa sem próxima ação ou sem data',
+    semMotivo(r) && 'Perdido sem motivo'].filter(Boolean);
+}
+function historicoTexto(r) {
+  const h = (L().historico || []).filter(x => x.id === r._id);
+  return h.length ? 'Histórico de etapas:\n' + h.map(x => `${br(x.data)}: ${x.de || '—'} → ${x.para || '—'}`).join('\n') : 'Sem mudanças de etapa registradas';
+}
+// toda mudança de etapa passa por aqui: "Etapa desde" = hoje, entra no histórico e,
+// se a etapa nova for final, preenche a Data fim (só se estiver vazia)
+function aplicarEtapa(r, nova) {
+  const ce = colDo('etapa').nome, de = r[ce] ?? '';
+  nova = nova || '';
+  if (de === nova) return;
+  if (nova) r[ce] = nova; else delete r[ce];
+  r[colDo('etapa_desde').nome] = hoje();
+  (L().historico ||= []).push({ id: r._id, data: hoje(), de, para: nova });
+  const cf = colFim();
+  if (cf && !r[cf.nome] && faseDe(r) === 'final') r[cf.nome] = hoje();
+}
+function textoDe(r, c) {
+  if (c.tipo === 'dias_na_etapa') return dias(r[colDo('etapa_desde').nome]) ?? '';
+  const v = r[c.nome];
+  if (v == null) return '';
+  if (TIPOS_DATA.includes(c.tipo)) return br(v);
+  if (c.tipo === 'caixa') return v ? 'sim' : 'não';
+  if (c.tipo === 'numero') return String(v).replace('.', ',');
+  if (c.tipo === 'servicos') return Array.isArray(v) ? resumoServicos(v) : '';
+  return String(v);
+}
+
+// ---------- diálogos e avisos ----------
+function caixa(msg, { texto = null, opcoes = null } = {}) {
+  return new Promise(ok => {
+    const d = $('#caixa'), t = $('#cxTexto'), s = $('#cxEscolha');
+    $('#cxMsg').textContent = msg;
+    t.hidden = texto === null; t.value = texto ?? '';
+    s.hidden = !opcoes;
+    if (opcoes) s.replaceChildren(...opcoes.map(o => el('option', { value: o, textContent: o })));
+    let feito = false;
+    const fim = v => { if (!feito) { feito = true; ok(v); } };
+    d.querySelector('form').onsubmit = () => fim(opcoes ? s.value : texto !== null ? t.value.trim() : true);
+    $('#cxCancelar').onclick = () => { fim(null); d.close(); };
+    d.onclose = () => fim(null); // Esc
+    d.showModal();
+    if (texto !== null) t.select();
+  });
+}
+const confirmar = msg => caixa(msg);
+const pedirTexto = (msg, valor = '') => caixa(msg, { texto: valor });
+const escolher = (msg, opcoes) => caixa(msg, { opcoes });
+
+let toastTimer;
+function toast(msg, erro = true) {
+  const t = $('#toast');
+  t.textContent = msg; t.className = erro ? 'erro' : '';
+  t.hidePopover?.(); t.showPopover();
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidePopover(), 4000);
+}
+function mostrarAviso(msg, ...botoes) { const a = $('#aviso'); a.replaceChildren(el('span', { textContent: msg }), ...botoes); a.hidden = false; }
+function esconderAviso() { $('#aviso').hidden = true; }
+function mostrarStatus(txt, erro = false) { const s = $('#status'); s.textContent = txt; s.className = erro ? 'erro' : ''; }
+
+// ---------- servidor ----------
+// No PC (iniciar.bat, 127.0.0.1) fala com o server.py, que grava o crm.xlsx.
+// No GitHub Pages fala com o Apps Script da Planilha Google (apps-script/Codigo.gs), com uma chave de acesso.
+const API_URL = ''; // endereço do App da Web do Apps Script (termina em /exec); vazio = pergunta ao conectar
+const LOCAL = ['127.0.0.1', 'localhost'].includes(location.hostname);
+const ONDE = LOCAL ? 'no Excel' : 'na planilha';
+function conexao() { try { return JSON.parse(localStorage.getItem('crm-conexao')) || {}; } catch (e) { return {}; } }
+// devolve { ok, status, j }; falha de rede lança erro; sem chave configurada devolve status 401
+async function api(acao, corpo = {}) {
+  if (LOCAL) {
+    const res = acao === 'ler' ? await fetch('/api/dados')
+      : await fetch('/api/salvar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    return { ok: res.ok, status: res.status, j: await res.json() };
+  }
+  const c = conexao(), url = API_URL || c.url;
+  if (!url || !c.chave) return { ok: false, status: 401, j: {} };
+  // text/plain: o Apps Script não responde à verificação CORS que um application/json provocaria
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...corpo, acao, chave: c.chave }) });
+  const j = await res.json();
+  return { ok: !j.codigo, status: j.codigo || 200, j };
+}
+function pedirConexao(msg) {
+  const d = $('#conectar'), c = conexao();
+  $('#cnMsg').textContent = msg || 'Informe a chave de acesso gerada no Apps Script da planilha (função configurarChave).';
+  $('#cnUrlRot').hidden = !!API_URL;
+  $('#cnUrl').value = c.url || ''; $('#cnChave').value = '';
+  d.showModal();
+}
+$('#conectar').querySelector('form').onsubmit = () => {
+  const url = $('#cnUrl').value.trim(), chave = $('#cnChave').value.trim();
+  try { localStorage.setItem('crm-conexao', JSON.stringify({ url: API_URL ? undefined : url, chave })); }
+  catch (e) { toast('Este navegador não deixou guardar a chave (modo anônimo?).'); }
+  carregar(false);
+};
+function sair() {
+  try { localStorage.removeItem('crm-conexao'); } catch (e) {}
+  D = null; sujo = false;
+  location.reload();
+}
+
+async function carregar(perguntar = true) {
+  if (perguntar && sujo && !await confirmar(`Há alterações que ainda não foram gravadas ${ONDE}.\nRecarregar e descartá-las?`)) return;
+  let j;
+  try {
+    const r = await api('ler');
+    j = r.j;
+    if (r.status === 401 || r.status === 403) return pedirConexao(r.status === 403 ? 'Chave de acesso inválida. Confira e digite de novo.' : null);
+    if (!r.ok) throw new Error(j.erro);
+  } catch (e) {
+    mostrarAviso('Não consegui carregar os dados: ' + (e.message && !/fetch/i.test(e.message) ? e.message
+      : LOCAL ? 'o servidor não respondeu. Abra de novo o iniciar.bat.' : 'sem conexão com a planilha. Confira a internet e clique em Recarregar.'));
+    return;
+  }
+  const nomeAtual = D && L().nome;
+  D = j;
+  atual = Math.max(0, D.listas.findIndex(l => l.nome === nomeAtual));
+  clearTimeout(timer); sujo = false; pendente = false;
+  esconderAviso(); mostrarStatus(LOCAL ? 'Carregado do disco' : 'Carregado da planilha');
+  render();
+  if (j.precisaSalvar) salvar();
+}
+
+function salvar() {
+  sujo = true; mostrarStatus('Alterações não salvas…');
+  clearTimeout(timer); timer = setTimeout(enviar, 400);
+}
+
+async function enviar(forcar = false) {
+  clearTimeout(timer);
+  if (salvando) { pendente = true; return; }
+  salvando = true; pendente = false; mostrarStatus('Salvando…');
+  let res = null, j = {};
+  try {
+    res = await api('salvar', { mtime: D.mtime, listas: D.listas, forcar });
+    j = res.j;
+  } catch (e) { res = null; }
+  salvando = false;
+  if (res && res.ok) {
+    D.mtime = j.mtime; esconderAviso();
+    if (pendente) return enviar();
+    sujo = false; mostrarStatus('Salvo às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    return;
+  }
+  mostrarStatus('NÃO SALVO', true);
+  if (!res) {
+    mostrarAviso((LOCAL ? 'O servidor não está respondendo. Abra de novo o iniciar.bat e NÃO feche esta aba'
+      : 'Sem conexão com a planilha (internet?). NÃO feche esta aba') + ': suas alterações estão guardadas aqui. Tentando de novo a cada 5 s…');
+    timer = setTimeout(enviar, 5000);
+  } else if (res.status === 401 || res.status === 403) {
+    mostrarAviso('Chave de acesso inválida: as alterações estão guardadas nesta tela.', el('button', { textContent: 'Conectar de novo', onclick: () => pedirConexao() }));
+  } else if (res.status === 423) {
+    mostrarAviso(j.erro + ' Suas alterações estão guardadas nesta tela; tentando de novo a cada 5 s…',
+      el('button', { textContent: 'Tentar agora', onclick: () => enviar() }));
+    timer = setTimeout(enviar, 5000);
+  } else if (res.status === 409) {
+    mostrarAviso(j.erro + ' O que fazer?',
+      el('button', { textContent: 'Recarregar (perde o que mudei aqui)', onclick: () => carregar(false) }),
+      el('button', { textContent: 'Gravar por cima com o que está na tela', onclick: () => enviar(true) }));
+  } else {
+    mostrarAviso((j.erro || 'Erro ao salvar.') + ' Corrija e a gravação será tentada de novo.');
+  }
+}
+
+// ---------- painel de resumo ----------
+const pct = (n, total) => total ? Math.round(n / total * 100) + '%' : '–';
+const num = (n, casas = 0) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas });
+const brl = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
+// Etapas sem "oferta": % sobre o total de leads. Etapas com "oferta" (depois da proposta) ficam
+// agrupadas e o % delas é sobre o total de ofertas, como no bloco "Funil" da planilha antiga.
+function renderResumo() {
+  const l = L(), ce = colDo('etapa').nome;
+  const conta = e => l.registros.filter(r => r[ce] === e.nome).length;
+  const leads = l.registros.filter(r => r[ce]).length;
+  const etapasOferta = l.etapas.filter(e => e.oferta);
+  const ofertas = etapasOferta.reduce((s, e) => s + conta(e), 0);
+
+  function degrau(e, base, deQue) {
+    const n = conta(e), p = pct(n, base);
+    const marca = e.tipo === 'ganha' ? ' ✓' : e.tipo === 'perdida' ? ' ✕' : '';
+    const d = el('div', { className: 'degrau' + (n ? '' : ' vazio'), title: `${e.nome}${marca}: ${n} (${p} ${deQue})` },
+      el('b', {}, String(n), el('small', { textContent: p })), el('span', { textContent: e.nome + marca }));
+    d.style.background = e.cor; d.style.color = corTexto(e.cor);
+    return d;
+  }
+
+  const funil = el('div', { className: 'funil' },
+    el('div', { className: 'cartao', title: 'Registros com etapa preenchida' }, el('b', { textContent: leads }), el('span', { textContent: 'leads' })));
+  let grupo = null;
+  for (const e of l.etapas) {
+    if (!e.oferta) { funil.append(degrau(e, leads, 'dos leads')); continue; }
+    if (!grupo) {
+      grupo = el('div', { className: 'etapas' });
+      const g = el('div', { className: 'grupo-oferta', title: 'Etapas marcadas como "oferta" em Colunas e etapas. O % de cada uma é sobre o total de ofertas.' },
+        el('div', { className: 'topo' }, el('b', { textContent: ofertas }), ` ofertas · ${pct(ofertas, leads)} dos leads · % abaixo sobre as ofertas`), grupo);
+      g.style.flex = `${etapasOferta.length} 1 0`;
+      funil.append(g);
+    }
+    grupo.append(degrau(e, ofertas, 'das ofertas'));
+  }
+
+  const extras = [];
+  const vendas = etapasOferta.filter(e => e.tipo === 'ganha').reduce((s, e) => s + conta(e), 0);
+  if (ofertas) { // projeção: o que está antes da oferta (etapas abertas) × taxa de venda das ofertas
+    const andamento = l.etapas.filter(e => !e.oferta && e.tipo === 'aberta').reduce((s, e) => s + conta(e), 0);
+    const taxa = vendas / ofertas;
+    extras.push(el('div', { className: 'cartao', title: `${andamento} registro(s) em etapas abertas antes da oferta × ${pct(vendas, ofertas)} de vendas sobre as ofertas` },
+      el('b', { textContent: '≈ ' + num(andamento * taxa, 1) }), el('span', { textContent: `vendas projetadas (${andamento} em andamento)` })));
+  }
+  const atr = l.registros.filter(atrasado).length, sp = l.registros.filter(semProximaAcao).length;
+  $('#resumo').replaceChildren(funil, ...extras,
+    el('div', { className: 'atrasados alerta' + (sp ? ' tem' : ''), title: 'Leads em venda ativa sem próxima ação ou sem data (ver aba Hoje)', onclick: () => mudarVisao('hoje') },
+      el('b', { textContent: sp }), el('span', { textContent: 'sem próxima ação' })),
+    el('div', { className: 'atrasados' + (atr ? ' tem' : ''), title: 'Data da próxima ação no passado, fora das etapas finais (ver aba Hoje)', onclick: () => mudarVisao('hoje') },
+      el('b', { textContent: atr }), el('span', { textContent: 'atrasados' })));
+}
+
+// ---------- gráficos ----------
+let visao = 'hoje', dimGrafico = null;
+const SITUACOES = [['venda', 'Venda'], ['oferta', 'Em oferta'], ['antes', 'Antes da oferta'], ['perdido', 'Perdido']];
+
+function situacao(r) {
+  const e = L().etapas.find(e => e.nome === r[colDo('etapa').nome]);
+  if (!e) return null;
+  return e.tipo === 'ganha' ? 'venda' : e.tipo === 'perdida' ? 'perdido' : e.oferta ? 'oferta' : 'antes';
+}
+function contarPor(rs, fn) {
+  const m = new Map();
+  for (const r of rs) { const k = fn(r); m.set(k, (m.get(k) || 0) + 1); }
+  return m;
+}
+function tile(rotulo, valor, detalhe, dica) {
+  return el('div', { className: 'tile', title: dica || '' }, el('span', { textContent: rotulo }), el('b', { textContent: valor }), detalhe ? el('small', { textContent: detalhe }) : null);
+}
+function card(titulo, sub, ...corpo) {
+  return el('div', { className: 'card' }, el('h3', {}, ...[].concat(titulo)), el('p', { className: 'sub', textContent: sub }), ...corpo);
+}
+// barras horizontais; linhas = [{ rotulo, segs: [{ n, cor, dica }], valor, extra }]
+function barrasH(linhas) {
+  const max = Math.max(1, ...linhas.map(l => l.segs.reduce((s, x) => s + x.n, 0)));
+  return el('div', { className: 'hb' }, ...linhas.flatMap(l => {
+    const total = l.segs.reduce((s, x) => s + x.n, 0);
+    const b = el('div', { className: 'barras' }, ...l.segs.filter(s => s.n).map(s => {
+      const d = el('div', { className: 'seg' }); d.style.flex = s.n; d.style.background = s.cor; d.dataset.dica = s.dica; return d;
+    }));
+    b.style.width = (total / max * 78) + '%';
+    return [el('div', { className: 'rot', textContent: l.rotulo, title: l.rotulo }),
+      el('div', { className: 'trilho' }, b, el('span', { className: 'val' }, String(l.valor ?? total), l.extra ? el('small', { textContent: l.extra }) : null))];
+  }));
+}
+
+function renderGraficos() {
+  const l = L(), ce = colDo('etapa').nome, cor = k => `var(--s-${k})`;
+  const rs = l.registros.filter(passa).filter(r => r[ce]);
+  const g = $('#graficos');
+  const filtrado = l.registros.filter(passa).length !== l.registros.length;
+  const nota = el('div', { className: 'g-nota' }, filtrado
+    ? `Com os filtros da aba Tabela: ${rs.length} de ${l.registros.length} registros.` : 'Todos os registros da lista. Os filtros da aba Tabela também valem aqui.',
+    filtrado ? el('button', { textContent: 'Limpar filtros', onclick: () => { $('#btnLimpar').click(); renderGraficos(); } }) : null);
+  if (!rs.length) return g.replaceChildren(nota, el('p', { className: 'vazio', textContent: 'Nenhum registro com etapa para mostrar.' }));
+
+  const sit = contarPor(rs, situacao), n = k => sit.get(k) || 0;
+  const nomesOferta = new Set(l.etapas.filter(e => e.oferta).map(e => e.nome));
+  const ofertas = rs.filter(r => nomesOferta.has(r[ce])).length;
+  const tiles = [
+    tile('Leads', rs.length),
+    tile('Ofertas', ofertas, pct(ofertas, rs.length) + ' dos leads', 'Registros em etapas marcadas como "oferta" (inclui vendas e recusas)'),
+    tile('Vendas', n('venda'), `${pct(n('venda'), ofertas)} das ofertas · ${pct(n('venda'), rs.length)} dos leads`),
+    tile('Em andamento', n('antes') + n('oferta'), `${n('antes')} antes da oferta · ${n('oferta')} em oferta`),
+  ];
+  const datas = l.colunas.filter(c => c.tipo === 'data');
+  if (datas.length >= 2) { // como o SLA da planilha: fim − início (ou hoje − início), sem os perdidos
+    const [ini, fim] = datas.map(c => c.nome);
+    const v = rs.filter(r => situacao(r) !== 'perdido' && ehData(r[ini])).map(r => dias(r[ini]) - (ehData(r[fim]) ? dias(r[fim]) : 0));
+    if (v.length) tiles.push(tile('Tempo médio', num(v.reduce((a, b) => a + b, 0) / v.length, 1) + ' dias', `${ini} → ${fim} (ou hoje)`,
+      `Média de ${v.length} registro(s) não perdidos com "${ini}" preenchida`));
+  }
+
+  // R$: receita fechada (única e mensal), pipeline ativo e ponderado, taxa de ganho
+  const cs = colServicos(), soma = lista => somaValores(lista);
+  const ganhos = rs.filter(r => etapaDe(r)?.tipo === 'ganha'), recusas = rs.filter(ehRecusa);
+  const fechados = ganhos.length + recusas.length, taxaGeral = fechados ? ganhos.length / fechados : 0;
+  const ativos = rs.filter(r => faseDe(r) === 'ativa');
+  // taxa por etapa = vendas / (vendas + recusas) entre os leads que, pelo histórico, passaram pela etapa
+  const MIN_HISTORICO = 5;
+  const passou = new Map();
+  for (const h of l.historico || []) for (const n of [h.de, h.para]) if (n) (passou.get(n) || passou.set(n, new Set()).get(n)).add(h.id);
+  const porId = new Map(rs.map(r => [r._id, r]));
+  const taxaEtapa = nome => {
+    let g = 0, p = 0;
+    for (const id of passou.get(nome) || []) { const r = porId.get(id); if (!r) continue; if (etapaDe(r)?.tipo === 'ganha') g++; else if (ehRecusa(r)) p++; }
+    return g + p >= MIN_HISTORICO ? { taxa: g / (g + p), propria: true, n: g + p } : { taxa: taxaGeral, propria: false, n: g + p };
+  };
+  const ponderado = { unico: 0, mensal: 0 };
+  const usouGeral = [], detalhePond = [];
+  for (const e of l.etapas.filter(e => fase(e) === 'ativa')) {
+    const t = taxaEtapa(e.nome), s = soma(ativos.filter(r => r[ce] === e.nome));
+    ponderado.unico += s.unico * t.taxa; ponderado.mensal += s.mensal * t.taxa;
+    if (!t.propria) usouGeral.push(e.nome);
+    detalhePond.push(`${e.nome}: ${fmtValores(s, brl(0))} × ${pct(t.taxa * 100, 100)} ${t.propria ? `(histórico de ${t.n})` : `(taxa geral; histórico de ${t.n})`}`);
+  }
+  const rec = soma(ganhos), pipe = soma(ativos);
+  const maisMensal = v => v.mensal ? `+ ${brl(v.mensal)}/mês · ` : '';
+  const tilesDinheiro = [
+    tile('Receita fechada', brl(rec.unico), `${ganhos.length} venda${ganhos.length === 1 ? '' : 's'}`,
+      cs ? 'Soma dos serviços de cobrança única nas vendas' : colValor() ? `Soma de "${colValor().nome}" nas vendas` : 'Crie uma coluna de Serviços em "Colunas e etapas"'),
+    cs ? tile('Recorrente fechado', brl(rec.mensal) + '/mês', 'serviços mensais vendidos', 'Soma dos serviços de cobrança mensal nas vendas') : null,
+    tile('Pipeline ativo', brl(pipe.unico), `${maisMensal(pipe)}${ativos.length} leads em venda ativa`),
+    tile('Pipeline ponderado', '≈ ' + brl(ponderado.unico),
+      maisMensal(ponderado) + (usouGeral.length ? `⚠ taxa geral (${pct(ganhos.length, fechados)}) em ${usouGeral.length} etapa${usouGeral.length > 1 ? 's' : ''}: histórico insuficiente` : 'taxa histórica de cada etapa'),
+      `Cada etapa ativa × taxa de conversão para venda. Precisa de ${MIN_HISTORICO} leads fechados que passaram pela etapa; senão usa a taxa geral.\n` + detalhePond.join('\n')),
+    tile('Taxa de ganho', fechados ? pct(ganhos.length, fechados) : '–', `${ganhos.length} vendas / ${fechados} (vendas + recusas)`,
+      'Vendas ÷ (vendas + recusas). Não conta desqualificados nem leads em produção.'),
+  ];
+
+  // 1. leads por etapa
+  const porEtapa = contarPor(rs, r => r[ce]);
+  const c1 = card('Leads por etapa', 'Quantidade e % sobre os leads', barrasH(l.etapas.map(e => {
+    const q = porEtapa.get(e.nome) || 0;
+    return { rotulo: e.nome, segs: [{ n: q, cor: cor('antes'), dica: `${e.nome}: ${q} (${pct(q, rs.length)} dos leads)` }], extra: pct(q, rs.length) };
+  })));
+
+  // 2. resultado por dimensão (coluna de seleção escolhida)
+  const dims = l.colunas.filter(c => c.tipo === 'selecao' || c.tipo === 'servicos');
+  const cards = [c1];
+  if (dims.length) {
+    if (!dims.some(c => c.nome === dimGrafico)) dimGrafico = (dims.find(c => /segmento/i.test(c.nome)) || dims[0]).nome;
+    const sel = el('select', { onchange: ev => { dimGrafico = ev.target.value; renderGraficos(); } }, ...dims.map(c => el('option', { value: c.nome, textContent: c.nome })));
+    sel.value = dimGrafico;
+    const dim = dims.find(c => c.nome === dimGrafico), grupos = new Map();
+    for (const r of rs) {
+      for (const k of new Set(valoresFiltro(r, dim).map(v => v === '__vazio' ? '(vazio)' : v))) { // serviços: o lead entra em cada um
+        if (!grupos.has(k)) grupos.set(k, []);
+        grupos.get(k).push(r);
+      }
+    }
+    const linhas = [...grupos].sort((a, b) => (a[0] === '(vazio)') - (b[0] === '(vazio)') || b[1].length - a[1].length).map(([k, lista]) => {
+      const s = contarPor(lista, situacao), q = x => s.get(x) || 0;
+      return { rotulo: k, segs: SITUACOES.map(([x, nome]) => ({ n: q(x), cor: cor(x), dica: `${k} — ${nome}: ${q(x)}\nTotal: ${lista.length} · vendas: ${q('venda')}` })),
+        extra: q('venda') ? `${q('venda')} venda${q('venda') > 1 ? 's' : ''}` : '' };
+    });
+    cards.push(card(['Resultado por', sel], 'Onde cada lead está hoje',
+      el('div', { className: 'legenda' }, ...SITUACOES.map(([x, nome]) => { const i = el('i'); i.style.background = cor(x); return el('span', {}, i, nome); })),
+      barrasH(linhas)));
+  }
+
+  // 3. motivos das perdas
+  const cm = l.colunas.find(c => /motivo/i.test(c.nome));
+  if (cm) {
+    const perdidos = rs.filter(r => situacao(r) === 'perdido');
+    // sem motivo preenchido: agrupa pelo nome da etapa (ex.: "Desqualificado"), no fim da lista
+    const semMotivo = new Set(perdidos.filter(r => !r[cm.nome]).map(r => r[ce]));
+    const m = [...contarPor(perdidos, r => r[cm.nome] || r[ce])].sort((a, b) => semMotivo.has(a[0]) - semMotivo.has(b[0]) || b[1] - a[1]);
+    cards.push(card('Motivos das perdas', `${perdidos.length} perdido(s): recusas e desqualificados`,
+      m.length ? barrasH(m.map(([k, q]) => ({ rotulo: k, segs: [{ n: q, cor: cor('perdido'), dica: `${k}${semMotivo.has(k) ? ' (sem motivo preenchido)' : ''}: ${q} (${pct(q, perdidos.length)} das perdas)` }], extra: pct(q, perdidos.length) })))
+        : el('p', { className: 'vazio', textContent: 'Nenhuma perda.' })));
+  }
+
+  // 4. novos leads por semana (1ª coluna de data)
+  if (datas.length) {
+    const cd = datas[0].nome, comData = rs.filter(r => ehData(r[cd]));
+    const segunda = s => { const [a, m, d] = s.split('-').map(Number), x = new Date(a, m - 1, d); x.setDate(d - (x.getDay() + 6) % 7); return iso(x); };
+    const porSemana = contarPor(comData, r => segunda(r[cd]));
+    const semanas = [];
+    if (comData.length) {
+      const ord = [...porSemana.keys()].sort();
+      const x = new Date(ord[0] + 'T00:00'), fimS = new Date(segunda(hoje()) + 'T00:00');
+      for (; x <= fimS; x.setDate(x.getDate() + 7)) semanas.push(iso(x));
+    }
+    const ultimas = semanas.slice(-16), maxS = Math.max(1, ...ultimas.map(s => porSemana.get(s) || 0));
+    cards.push(card('Novos leads por semana', `Pela coluna "${cd}" — ${comData.length} de ${rs.length} registros têm essa data`,
+      ultimas.length ? el('div', {},
+        el('div', { className: 'colunas' }, ...ultimas.map(s => {
+          const q = porSemana.get(s) || 0, c = el('div', { className: 'c' });
+          c.style.height = `calc(${q / maxS} * (100% - 20px))`;
+          return el('div', { className: 'col' },el('span', { className: 'n', textContent: q || '' }), c);
+        })),
+        el('div', { className: 'eixo-x' }, ...ultimas.map(s => el('span', { textContent: br(s).slice(0, 5) }))))
+        : el('p', { className: 'vazio', textContent: 'Nenhum registro com data.' })));
+    // dica por coluna (área inteira da coluna, maior que a barra)
+    const cols = cards.at(-1).querySelectorAll('.col');
+    ultimas.forEach((s, i) => { if (cols[i]) cols[i].dataset.dica = `Semana de ${br(s)}: ${porSemana.get(s) || 0} lead(s)`; });
+  }
+
+  // 5. conversão por segmento e por origem
+  const etSemResposta = l.etapas.find(e => /sem resposta/i.test(e.nome));
+  // um grupo por valor da coluna (serviços: um por item); valorNo(r, k): receita do registro no grupo k (k null = linha Total)
+  function tabelaConversao(c, valorNo = r => valoresDe(r)) {
+    const grupos = new Map();
+    for (const r of rs) for (const k of new Set(valoresFiltro(r, c).map(v => v === '__vazio' ? '(vazio)' : v))) (grupos.get(k) || grupos.set(k, []).get(k)).push(r);
+    const linhaDe = (k, lista, total) => {
+      const g = lista.filter(r => etapaDe(r)?.tipo === 'ganha'), p = lista.filter(ehRecusa).length;
+      const sr = etSemResposta ? lista.filter(r => r[ce] === etSemResposta.nome).length : 0, rec = somaValores(g, r => valorNo(r, total ? null : k));
+      return el('tr', {}, el('td', { textContent: k }), ...[lista.length, g.length, p, sr].map(n => el('td', { textContent: n })),
+        el('td', { textContent: g.length + p ? pct(g.length, g.length + p) : '–' }), el('td', { textContent: fmtValores(rec) }));
+    };
+    const ord = [...grupos].sort((a, b) => (a[0] === '(vazio)') - (b[0] === '(vazio)') || b[1].length - a[1].length);
+    return el('div', { className: 'rolar' }, el('table', { className: 'conv' },
+      el('thead', {}, el('tr', {}, ...[c.nome, 'Leads', 'Vendas', 'Recusas', 'Sem resposta', 'Taxa de ganho', 'Receita'].map(t => el('th', { textContent: t })))),
+      el('tbody', {}, ...ord.map(([k, lista]) => linhaDe(k, lista))),
+      el('tfoot', {}, linhaDe('Total', rs, true))));
+  }
+  const conversoes = [colPor(/^segmento$/i), colPor(/^origem$/i)].filter(Boolean).map(c => card(`Conversão por ${c.nome}`, 'Taxa de ganho = vendas ÷ (vendas + recusas)', tabelaConversao(c)));
+  if (cs) conversoes.unshift(card(`Conversão por serviço`, 'Lead com vários serviços conta em cada um; a receita de cada linha soma só os itens daquele serviço',
+    tabelaConversao(cs, (r, k) => k == null ? valoresDe(r) : somaItens(itensDe(r).filter(i => i.servico === k)))));
+  for (const k of conversoes) { k.classList.add('largo'); cards.push(k); }
+
+  // 6. funil de produção: quem está em produção e quantos já viraram contato
+  const etProd = l.etapas.filter(e => fase(e) === 'producao');
+  if (etProd.length) {
+    const nomesProd = new Set(etProd.map(e => e.nome)), cl = colLink();
+    const saiuPeloHistorico = new Set((l.historico || []).filter(h => nomesProd.has(h.de)).map(h => h.id));
+    const viraram = rs.filter(r => faseDe(r) !== 'producao' && (saiuPeloHistorico.has(r._id) ||
+      (cl && r[cl.nome] && (faseDe(r) === 'ativa' || etapaDe(r)?.tipo === 'ganha' || ehRecusa(r)))));
+    const emProducao = rs.filter(r => faseDe(r) === 'producao').length, base = emProducao + viraram.length;
+    cards.push(card('Funil de produção', `${viraram.length} de ${base} LPs produzidas já viraram contato (${pct(viraram.length, base)})`,
+      barrasH([...etProd.map(e => { const q = porEtapa.get(e.nome) || 0; return { rotulo: e.nome, segs: [{ n: q, cor: cor('antes'), dica: `Em ${e.nome}: ${q}` }] }; }),
+        { rotulo: 'Já viraram contato', segs: [{ n: viraram.length, cor: cor('venda'),
+          dica: `${viraram.length} leads que saíram da produção: pelo histórico de etapas ou por terem "${cl ? cl.nome : 'link da LP'}" e estarem em venda ativa, venda ou recusa` }] }])));
+  }
+
+  g.replaceChildren(nota, el('div', { className: 'tiles dinheiro' }, ...tilesDinheiro), el('div', { className: 'tiles' }, ...tiles), el('div', { className: 'cards' }, ...cards));
+}
+
+// ---------- aba Hoje ----------
+function renderHoje() {
+  const l = L(), ce = colDo('etapa').nome, cd = colDo('data_proxima_acao').nome, h = hoje();
+  const naoFinal = l.registros.filter(r => faseDe(r) !== 'final');
+  const atrasados = naoFinal.filter(r => ehData(r[cd]) && r[cd] < h).sort((a, b) => a[cd].localeCompare(b[cd]));
+  const paraHoje = naoFinal.filter(r => r[cd] === h);
+  const semAcao = l.registros.filter(semProximaAcao);
+  const excesso = r => diasNaEtapa(r) - etapaDe(r).limite;
+  const parados = l.registros.filter(parado).sort((a, b) => excesso(b) - excesso(a));
+  $('#hoje').replaceChildren(
+    blocoHoje('Atrasados', 'vermelho', atrasados, 'mais antigos primeiro', r => `venceu em ${br(r[cd])} (há ${dias(r[cd])} dia${dias(r[cd]) === 1 ? '' : 's'})`),
+    blocoHoje('Para hoje', 'azul', paraHoje),
+    blocoHoje('Ativos sem próxima ação', 'ambar', semAcao, 'venda ativa sem próxima ação ou sem data'),
+    blocoHoje('Leads parados', 'cinza', parados, 'passaram do limite de dias da etapa — limites em "Colunas e etapas"',
+      r => `${diasNaEtapa(r)} dias em ${r[ce]} (limite ${etapaDe(r).limite})`, true));
+}
+function blocoHoje(titulo, tom, lista, sub, detalhe, comMover) {
+  return el('section', { className: 'bloco ' + tom },
+    el('h2', {}, titulo, el('span', { className: 'n', textContent: lista.length }), sub ? el('small', { textContent: sub }) : null),
+    ...(lista.length ? lista.map(r => itemHoje(r, detalhe?.(r), comMover)) : [el('p', { className: 'nada', textContent: 'Nenhum.' })]));
+}
+function itemHoje(r, detalhe, comMover) {
+  const ce = colDo('etapa').nome, cpa = colDo('proxima_acao').nome, cd = colDo('data_proxima_acao').nome;
+  const nome = r[L().colunas[0].nome] || '(sem nome)';
+  const etapa = selecao(L().etapas.map(e => e.nome), r[ce], () => { aplicarEtapa(r, etapa.value); salvar(); render(); });
+  etapa.className = 'etapa'; pintar(etapa, r[ce]); etapa.title = historicoTexto(r);
+  const txt = el('input', { type: 'text', className: 'txt', value: r[cpa] ?? '', placeholder: 'Próxima ação' });
+  const dt = el('input', { type: 'text', className: 'dt', value: br(r[cd]), placeholder: 'dd/mm/aaaa' });
+  const gravarAcao = ev => {
+    ev.preventDefault();
+    const x = deBR(dt.value);
+    dt.classList.toggle('invalido', x === undefined);
+    if (x === undefined) return toast('Data inválida. Use dd/mm/aaaa (ex.: 07/10/2026).');
+    if (txt.value.trim()) r[cpa] = txt.value.trim(); else delete r[cpa];
+    if (x) r[cd] = x; else delete r[cd];
+    salvar(); render(); toast(`Próxima ação de "${nome}" salva.`, false);
+  };
+  const amanha = () => { const d = new Date(); d.setDate(d.getDate() + 1); dt.value = br(iso(d)); };
+  const d = diasNaEtapa(r), itens = itensDe(r);
+  const item = el('div', { className: 'item' },
+    el('div', { className: 'emp' }, el('b', { textContent: nome, title: nome }),
+      el('div', { className: 'meta' }, etapa, d == null ? null : el('span', { textContent: `${d} dia${d === 1 ? '' : 's'} na etapa` }),
+        itens.length ? el('span', { textContent: resumoServicos(itens), title: itens.map(fmtItem).join('\n') }) : null,
+        detalhe ? el('span', { className: 'detalhe', textContent: detalhe }) : null)),
+    el('form', { className: 'acao', onsubmit: gravarAcao }, txt, dt,
+      el('button', { type: 'button', textContent: 'Amanhã', title: 'Usar a data de amanhã', onclick: amanha }),
+      el('button', { className: 'primario', textContent: 'Salvar' })),
+    el('div', { className: 'links' }, ...linksDe(r, true),
+      el('button', { type: 'button', textContent: 'Ficha', title: 'Ver e editar todas as colunas', onclick: () => abrirFicha(r) })));
+  if (comMover) item.append(moverParaRecusa(r, nome));
+  return item;
+}
+// WhatsApp, Abordagem e link da LP; comFalta: mostra "sem WhatsApp"/"sem LP" quando não houver
+function linksDe(r, comFalta) {
+  const cw = colWhats(), cl = colLink();
+  const w = cw && r[cw.nome] ? whats(r[cw.nome]) : null, lp = cl && r[cl.nome] ? urlCompleta(r[cl.nome]) : null;
+  const falta = t => comFalta ? el('span', { className: 'falta', textContent: t }) : null;
+  return [
+    w ? el('a', { href: w, target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' }) : falta('sem WhatsApp'),
+    w ? el('a', { href: abordagem(r), target: '_blank', rel: 'noopener', className: 'whats', textContent: 'Abordagem', title: 'Abrir o WhatsApp com a mensagem de abordagem pronta' }) : null,
+    lp ? el('a', { href: lp, target: '_blank', rel: 'noopener', textContent: 'Link da LP ↗' }) : falta('sem LP')].filter(Boolean);
+}
+
+// ---------- ficha do registro ----------
+let fichaReg = null;
+function abrirFicha(r) { fichaReg = r; renderFicha(); $('#ficha').showModal(); }
+function renderFicha() {
+  const r = fichaReg, d = $('#ficha');
+  if (!r || !L().registros.includes(r)) return d.close();
+  const largos = ['servicos', 'proxima_acao', 'url', 'telefone'];
+  const campos = L().colunas.map((c, i) => el('div', { className: 'f-campo' + (i === 0 || largos.includes(c.tipo) ? ' largo' : '') },
+    el('span', { textContent: c.nome }),
+    c.tipo === 'servicos' ? editorServicos(r, c) : c.tipo === 'dias_na_etapa' ? el('span', { className: 'dias', textContent: diasNaEtapa(r) ?? '–' }) : celula(r, c)));
+  const a = avisos(r);
+  d.replaceChildren(
+    el('div', { className: 'g-topo' }, el('h2', { textContent: r[L().colunas[0].nome] || '(sem nome)' }), el('button', { textContent: 'Fechar', onclick: () => d.close() })),
+    ...(a.length ? [el('p', { className: 'f-aviso', textContent: a.join(' · ') })] : []),
+    el('div', { className: 'f-corpo' }, ...campos),
+    el('div', { className: 'f-rodape' },
+      el('button', { type: 'button', className: 'perigo', textContent: 'Apagar registro', onclick: async () => { await apagarRegistro(r); if (!L().registros.includes(r)) d.close(); } }),
+      el('button', { type: 'button', className: 'primario', textContent: 'Concluído', onclick: () => d.close() })));
+}
+// "Mover para Recusa (Sem retorno)", com confirmação na própria página
+function moverParaRecusa(r, nome) {
+  const destino = L().etapas.find(e => /^recusa$/i.test(e.nome)) || L().etapas.find(e => e.tipo === 'perdida');
+  if (!destino) return null;
+  const caixa = el('div', { className: 'mover' });
+  const normal = () => caixa.replaceChildren(el('button', { type: 'button', textContent: `Mover para ${destino.nome} (Sem retorno)`, onclick: perguntar }));
+  const perguntar = () => caixa.replaceChildren(el('span', { textContent: `Mover "${nome}" para ${destino.nome} com motivo "Sem retorno"?` }),
+    el('button', { type: 'button', className: 'perigo', textContent: 'Sim, mover', onclick: () => {
+      aplicarEtapa(r, destino.nome);
+      const cm = colMotivo();
+      if (cm && !r[cm.nome]) {
+        r[cm.nome] = 'Sem retorno';
+        if (cm.tipo === 'selecao' && !cm.opcoes.includes('Sem retorno')) cm.opcoes.push('Sem retorno');
+      }
+      salvar(); render(); toast(`"${nome}" movido para ${destino.nome}.`, false);
+    } }),
+    el('button', { type: 'button', textContent: 'Cancelar', onclick: normal }));
+  normal();
+  return caixa;
+}
+
+function mudarVisao(v) {
+  visao = v;
+  for (const [id, x] of [['#vHoje', 'hoje'], ['#vTabela', 'tabela'], ['#vGraficos', 'graficos']]) $(id).classList.toggle('ativa', v === x);
+  $('.barra').hidden = $('#tabelaWrap').hidden = $('#cartoes').hidden = v !== 'tabela';
+  $('#graficos').hidden = v !== 'graficos';
+  $('#hoje').hidden = v !== 'hoje';
+  if (D) render();
+}
+document.addEventListener('mousemove', ev => {
+  const alvo = ev.target.closest?.('[data-dica]'), d = $('#dica');
+  if (!alvo) { d.hidden = true; return; }
+  d.textContent = alvo.dataset.dica; d.hidden = false;
+  d.style.left = Math.min(ev.clientX + 12, innerWidth - d.offsetWidth - 8) + 'px';
+  d.style.top = (ev.clientY + 14) + 'px';
+});
+
+// ---------- tabela ----------
+function renderAbas() {
+  $('#abas').replaceChildren(...D.listas.map((l, i) => el('button', {
+    textContent: l.nome, className: i === atual ? 'ativa' : '',
+    onclick: () => { atual = i; V = { busca: '', filtros: {}, ordem: null, dir: 1, agrupar: V.agrupar }; $('#busca').value = ''; render(); }
+  })));
+}
+
+function chave(r, c) {
+  if (c.tipo === 'dias_na_etapa') return dias(r[colDo('etapa_desde').nome]);
+  const v = r[c.nome];
+  if (v == null || v === '') return null;
+  if (c.tipo === 'etapa') { const i = L().etapas.findIndex(e => e.nome === v); return i < 0 ? 999 : i; }
+  if (c.tipo === 'caixa') return v ? 1 : 0;
+  if (c.tipo === 'servicos') { const s = somaItens(v); return s.unico + s.mensal; }
+  return v;
+}
+function comparar(a, b, c) {
+  const x = chave(a, c), y = chave(b, c);
+  if (x == null || y == null) return x == null && y == null ? 0 : x == null ? 1 : -1; // vazios sempre no fim
+  const r = typeof x === 'string' && typeof y === 'string'
+    ? x.localeCompare(y, 'pt-BR', { sensitivity: 'base', numeric: true }) : (x < y ? -1 : x > y ? 1 : 0);
+  return r * V.dir;
+}
+function passa(r) {
+  const cols = L().colunas.filter(c => c.visivel || c.tipo === 'etapa');
+  if (V.busca && !cols.some(c => norm(textoDe(r, c)).includes(norm(V.busca)))) return false;
+  for (const [nome, f] of Object.entries(V.filtros)) {
+    const c = L().colunas.find(c => c.nome === nome);
+    if (!c || !f.length) continue;
+    if (Array.isArray(f)) { // vários valores marcados na mesma coluna: basta bater com um deles
+      if (!valoresFiltro(r, c).some(v => f.includes(v))) return false;
+    } else if (!norm(textoDe(r, c)).includes(norm(f))) return false;
+  }
+  return true;
+}
+
+function filtro(c) {
+  const f = V.filtros[c.nome] ?? '';
+  const mudou = e => { V.filtros[c.nome] = e.target.value; renderCorpo(); };
+  if (c.tipo === 'dias_na_etapa') return el('input', { className: 'filtro', value: f, oninput: mudou });
+  if (['selecao', 'etapa', 'caixa', 'servicos'].includes(c.tipo)) {
+    const b = el('button', { className: 'filtro multi', type: 'button' });
+    b.onclick = () => abrirMenuFiltro(c, b);
+    rotuloFiltro(c, b);
+    return b;
+  }
+  return el('input', { className: 'filtro', value: f, placeholder: 'filtrar', oninput: mudou });
+}
+
+const ROTULO_VAZIO = '(vazio)';
+function rotuloFiltro(c, b) {
+  const f = V.filtros[c.nome] || [];
+  const nomes = f.map(v => v === '__vazio' ? ROTULO_VAZIO : v);
+  b.textContent = !f.length ? '(todos)' : f.length === 1 ? nomes[0] : `${nomes[0]} +${f.length - 1}`;
+  b.title = f.length ? 'Mostrando: ' + nomes.join(', ') : 'Filtrar por um ou mais valores';
+  b.classList.toggle('ativo', f.length > 0);
+}
+// lista de caixas de marcar (popover, para não ser cortada pela rolagem da tabela)
+function abrirMenuFiltro(c, b) {
+  const m = $('#menuFiltro');
+  const ops = c.tipo === 'caixa' ? ['sim', 'não'] : c.tipo === 'etapa' ? L().etapas.map(e => e.nome) : c.tipo === 'servicos' ? nomesServicos(c) : c.opcoes;
+  const valores = [...ops, ...(c.tipo === 'caixa' ? [] : ['__vazio'])];
+  const marcados = () => V.filtros[c.nome] || [];
+  const contagem = v => L().registros.filter(r => valoresFiltro(r, c).includes(v)).length;
+  const aplicar = lista => { V.filtros[c.nome] = lista; rotuloFiltro(c, b); renderCorpo(); };
+  const desenhar = () => m.replaceChildren(
+    el('div', { className: 'mf-topo' },
+      el('button', { type: 'button', textContent: 'Todos', onclick: () => { aplicar([...valores]); desenhar(); } }),
+      el('button', { type: 'button', textContent: 'Limpar', onclick: () => { aplicar([]); desenhar(); } })),
+    ...valores.map(v => el('label', {},
+      el('input', { type: 'checkbox', checked: marcados().includes(v), onchange: ev => {
+        aplicar(ev.target.checked ? [...marcados(), v] : marcados().filter(x => x !== v));
+      } }),
+      el('span', { textContent: v === '__vazio' ? ROTULO_VAZIO : v }),
+      el('small', { textContent: contagem(v) }))));
+  desenhar();
+  const r = b.getBoundingClientRect();
+  m.style.left = Math.min(r.left, innerWidth - 260) + 'px';
+  m.style.top = (r.bottom + 2) + 'px';
+  m.style.minWidth = Math.max(r.width, 220) + 'px';
+  m.showPopover();
+}
+
+function renderCabecalho() {
+  const cols = L().colunas.filter(c => c.visivel);
+  const titulos = cols.map(c => el('th', {
+    className: 't-' + c.tipo, title: 'Clique para ordenar',
+    onclick: () => {
+      if (V.ordem !== c.nome) { V.ordem = c.nome; V.dir = 1; } else if (V.dir === 1) V.dir = -1; else V.ordem = null;
+      renderCabecalho(); renderCorpo();
+    }
+  }, c.nome, V.ordem === c.nome ? el('span', { className: 'seta', textContent: V.dir === 1 ? ' ▲' : ' ▼' }) : null));
+  $('#cabecalho').replaceChildren(
+    el('tr', {}, ...titulos, el('th', {})),
+    el('tr', {}, ...cols.map(c => el('th', {}, filtro(c))), el('th', {})));
+  // no celular não há cabeçalho de tabela: filtros de etapa e serviço ficam na barra
+  $('#filtrosCel').replaceChildren(...[colDo('etapa'), colServicos()].filter(Boolean).map(c => el('span', {}, c.nome, filtro(c))));
+}
+
+function renderCorpo() {
+  const l = L(), cols = l.colunas.filter(c => c.visivel), ce = colDo('etapa').nome;
+  let rs = l.registros.filter(passa);
+  const c = l.colunas.find(c => c.nome === V.ordem);
+  if (c) rs.sort((a, b) => comparar(a, b, c));
+  // grupos: [{ nome, cor, regs }]; sem "Agrupar por etapa", um grupo só sem título
+  let grupos = [{ nome: null, regs: rs }];
+  if (V.agrupar) {
+    const nomes = l.etapas.map(e => e.nome);
+    for (const r of rs) if (!nomes.includes(r[ce] ?? '')) nomes.push(r[ce] ?? '');
+    grupos = nomes.map(g => ({ nome: g, cor: l.etapas.find(e => e.nome === g)?.cor || '#cbd5e1', regs: rs.filter(r => (r[ce] ?? '') === g) })).filter(g => g.regs.length);
+  }
+  const vazio = l.registros.length ? 'Nenhum registro com esses filtros.' : 'Nenhum registro ainda. Clique em "+ Registro".';
+  const bolinha = g => { const b = el('span', { className: 'bolinha' }); b.style.background = g.cor; return b; };
+  const corpo = $('#corpo'), cartoes = $('#cartoes');
+  corpo.replaceChildren(); cartoes.replaceChildren();
+  if (celular.matches) {
+    for (const g of grupos) {
+      if (g.nome != null) cartoes.append(el('div', { className: 'grupo-cel' }, bolinha(g), g.nome || '(sem etapa)', el('span', { className: 'n', textContent: g.regs.length })));
+      g.regs.forEach(r => cartoes.append(cartao(r)));
+    }
+    if (!rs.length) cartoes.append(el('p', { className: 'nada', textContent: vazio }));
+  } else {
+    for (const g of grupos) {
+      if (g.nome != null) corpo.append(el('tr', { className: 'grupo' }, el('td', { colSpan: cols.length + 1 },
+        bolinha(g), g.nome || '(sem etapa)', el('span', { className: 'n', textContent: g.regs.length }))));
+      g.regs.forEach(r => corpo.append(linha(r, cols)));
+    }
+    if (!rs.length) corpo.append(el('tr', {}, el('td', { className: 'nada', colSpan: cols.length + 1, textContent: vazio })));
+  }
+  $('#contagem').textContent = rs.length === l.registros.length ? `${rs.length} registros` : `${rs.length} de ${l.registros.length} registros`;
+}
+
+// registro em cartão (celular): nome, etapa, serviços, próxima ação e links; toque abre a ficha
+function cartao(r) {
+  const l = L(), ce = colDo('etapa').nome, cpa = colDo('proxima_acao').nome, cd = colDo('data_proxima_acao').nome;
+  const etapa = selecao(l.etapas.map(e => e.nome), r[ce], () => { aplicarEtapa(r, etapa.value); salvar(); render(); });
+  etapa.className = 'etapa'; pintar(etapa, r[ce]);
+  const d = diasNaEtapa(r), itens = itensDe(r);
+  const acao = r[cpa] || ehData(r[cd]) ? '→ ' + [r[cpa], ehData(r[cd]) ? br(r[cd]) : null].filter(Boolean).join(' · ') : null;
+  const a = avisos(r);
+  const div = el('div', { className: 'reg' + (atrasado(r) ? ' atrasado' : a.length ? ' alerta' : ''), title: a.join(' · ') },
+    el('div', { className: 'r-topo' }, el('b', { textContent: r[l.colunas[0].nome] || '(sem nome)' }), etapa),
+    el('div', { className: 'r-linha' }, d == null ? null : el('span', { textContent: `${d} dia${d === 1 ? '' : 's'} na etapa` }),
+      colServicos() ? el('span', { className: itens.length ? 'forte' : '', textContent: itens.length ? resumoServicos(itens) : 'sem serviços' }) : null),
+    acao ? el('div', { className: 'r-linha' }, el('span', { className: atrasado(r) ? 'forte' : '', textContent: acao })) : null,
+    el('div', { className: 'links' }, ...linksDe(r, false), el('button', { type: 'button', textContent: 'Ficha', onclick: () => abrirFicha(r) })));
+  div.onclick = ev => { if (!ev.target.closest('select, a, button, input')) abrirFicha(r); };
+  return div;
+}
+
+// vermelho = atrasado; âmbar = venda ativa sem próxima ação ou perdido sem motivo (só aviso, não bloqueia)
+function marcarLinha(tr, r) {
+  const a = avisos(r);
+  tr.classList.toggle('atrasado', atrasado(r));
+  tr.classList.toggle('alerta', !atrasado(r) && a.length > 0);
+  tr.title = a.join(' · ');
+}
+function linha(r, cols) {
+  const tr = el('tr');
+  marcarLinha(tr, r);
+  tr.dataset.id = r._id;
+  for (const c of cols) tr.append(el('td', { className: 't-' + c.tipo }, celula(r, c)));
+  tr.append(el('td', { className: 'acoes' },
+    el('button', { className: 'icone abrir', textContent: '☰', title: 'Abrir ficha (todas as colunas)', onclick: () => abrirFicha(r) }),
+    el('button', { className: 'icone', textContent: '✕', title: 'Apagar registro', onclick: () => apagarRegistro(r) })));
+  return tr;
+}
+
+function selecao(opcoes, v, onchange) {
+  const s = el('select', { onchange }, el('option', { value: '', textContent: '' }), ...opcoes.map(o => el('option', { value: o, textContent: o })));
+  if (v && !opcoes.includes(v)) s.append(el('option', { value: v, textContent: v + ' (?)' }));
+  s.value = v ?? '';
+  return s;
+}
+// cria a opção na coluna (vale para todos os registros) e já aplica neste
+async function novaOpcaoNaCelula(r, c, s) {
+  s.value = r[c.nome] ?? '';
+  const nome = await pedirTexto(`Nova opção para "${c.nome}":`);
+  if (!nome) return;
+  if (nome.includes(';')) return toast('A opção não pode ter ";".');
+  const existente = c.opcoes.find(o => mesmoNome(o, nome));
+  if (!existente) {
+    const ordenada = c.opcoes.every((o, i) => !i || c.opcoes[i - 1].localeCompare(o, 'pt-BR') <= 0);
+    c.opcoes.push(nome);
+    if (ordenada) c.opcoes.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  } else toast(`"${existente}" já existe; usei essa.`, false);
+  editar(r, c, existente || nome);
+  render();
+}
+function pintar(s, nome) {
+  const e = L().etapas.find(e => e.nome === nome);
+  s.style.background = e ? e.cor : ''; s.style.color = e ? corTexto(e.cor) : '';
+}
+
+function celula(r, c) {
+  const v = r[c.nome];
+  let e;
+  if (c.tipo === 'dias_na_etapa') return el('span', { className: 'dias', textContent: dias(r[colDo('etapa_desde').nome]) ?? '' });
+  if (c.tipo === 'servicos') {
+    const itens = Array.isArray(v) ? v : [];
+    e = el('button', { type: 'button', className: 'sv-celula' + (itens.length ? '' : ' vazio'), onclick: () => abrirServicos(r, c),
+      title: itens.length ? itens.map(fmtItem).join('\n') + '\n\nClique para editar' : 'Adicionar serviços' },
+      itens.length ? itens.map(i => i.servico).join(' + ') : '+ serviços',
+      itens.length ? el('span', { className: 'sv-total', textContent: ' · ' + fmtValores(somaItens(itens), 'a definir') }) : null);
+    e.dataset.id = r._id; e.dataset.col = c.nome;
+    return e;
+  }
+  if (c.tipo === 'caixa') {
+    e = el('input', { type: 'checkbox', checked: !!v, onchange: () => editar(r, c, e.checked) });
+  } else if (c.tipo === 'etapa' || c.tipo === 'selecao') {
+    e = selecao(c.tipo === 'etapa' ? L().etapas.map(x => x.nome) : c.opcoes, v, () => e.value === '__nova' ? novaOpcaoNaCelula(r, c, e) : editar(r, c, e.value || null));
+    if (c.tipo === 'etapa') { e.className = 'etapa'; pintar(e, v); e.title = historicoTexto(r); }
+    else e.append(el('option', { value: '__nova', textContent: '+ Nova opção…' }));
+  } else if (TIPOS_DATA.includes(c.tipo)) {
+    e = el('input', { type: 'text', value: br(v), placeholder: 'dd/mm/aaaa', onchange: () => {
+      const x = deBR(e.value);
+      e.classList.toggle('invalido', x === undefined);
+      if (x === undefined) return toast('Data inválida. Use dd/mm/aaaa (ex.: 07/10/2026).');
+      e.value = br(x); editar(r, c, x);
+    } });
+  } else if (c.tipo === 'numero') {
+    e = el('input', { type: 'text', inputMode: 'decimal', value: textoDe(r, c), onchange: () => {
+      const x = deNumero(e.value);
+      e.classList.toggle('invalido', x === undefined);
+      if (x === undefined) return toast('Número inválido.');
+      e.value = x == null ? '' : String(x).replace('.', ','); editar(r, c, x);
+    } });
+  } else {
+    e = el('input', { type: 'text', value: v ?? '', onchange: () => editar(r, c, e.value.trim() || null) });
+  }
+  e.dataset.id = r._id; e.dataset.col = c.nome;
+  const href = !v ? null : c.tipo === 'url' ? urlCompleta(v) : c.tipo === 'telefone' ? whats(v) : null;
+  if (!href) return e;
+  return el('div', { className: 'comLink' }, e, el('a', {
+    href, target: '_blank', rel: 'noopener', className: c.tipo === 'telefone' ? 'whats' : '',
+    textContent: c.tipo === 'telefone' ? 'WhatsApp' : '↗', title: c.tipo === 'telefone' ? 'Abrir no WhatsApp' : 'Abrir site'
+  }), c.tipo === 'telefone' ? el('a', {
+    href: abordagem(r), target: '_blank', rel: 'noopener', className: 'whats',
+    textContent: 'Abordagem', title: 'Abrir o WhatsApp com a mensagem de abordagem pronta'
+  }) : null);
+}
+
+function editar(r, c, valor) {
+  if (c.tipo === 'etapa') {
+    aplicarEtapa(r, valor);
+    render();
+  } else {
+    if (valor == null || valor === '') delete r[c.nome]; else r[c.nome] = valor;
+    const tr = [...document.querySelectorAll('#corpo tr')].find(t => t.dataset.id === r._id);
+    if (tr) {
+      marcarLinha(tr, r);
+      const d = tr.querySelector('.dias');
+      if (d) d.textContent = dias(r[colDo('etapa_desde').nome]) ?? '';
+      atualizarLinks(tr, r);
+    }
+    renderResumo();
+  }
+  salvar();
+}
+
+// Refaz as células de telefone e URL da linha, para os botões (WhatsApp, Abordagem, ↗)
+// aparecerem/atualizarem na hora — a mensagem de abordagem usa outras colunas também.
+function atualizarLinks(tr, r) {
+  for (const c of L().colunas.filter(c => c.tipo === 'telefone' || c.tipo === 'url')) {
+    const td = [...tr.children].find(t => t.querySelector(`[data-col="${CSS.escape(c.nome)}"]`));
+    if (!td) continue;
+    const focado = td.contains(document.activeElement);
+    td.replaceChildren(celula(r, c));
+    if (focado) td.querySelector('input')?.focus();
+  }
+}
+
+async function apagarRegistro(r) {
+  const nome = r[L().colunas[0].nome] || 'este registro';
+  if (!await confirmar(`Apagar "${nome}"?`)) return;
+  L().registros = L().registros.filter(x => x !== r);
+  render(); salvar();
+}
+
+function novoRegistro() {
+  const r = { _id: novoId(), [colDo('etapa').nome]: L().etapas[0].nome, [colDo('etapa_desde').nome]: hoje() };
+  for (const c of L().colunas) { // valor padrão da coluna (ex.: Serviços = Landing Page, com o preço sugerido)
+    if (c.padrao == null || c.padrao === '' || c.nome in r) continue;
+    if (c.tipo === 'servicos') { const s = catalogo(c, c.padrao); if (s) r[c.nome] = [itemDe(s)]; }
+    else r[c.nome] = c.tipo === 'numero' ? (deNumero(String(c.padrao)) ?? c.padrao) : c.padrao;
+  }
+  L().registros.unshift(r);
+  V.busca = ''; V.filtros = {}; $('#busca').value = '';
+  render(); salvar();
+  if (celular.matches) return abrirFicha(r);
+  const primeiro = [...document.querySelectorAll('#corpo [data-id]')].find(x => x.dataset.id === r._id);
+  primeiro?.focus(); primeiro?.scrollIntoView({ block: 'center' });
+}
+
+function render() {
+  const a = document.activeElement, foco = a?.dataset?.id ? [a.dataset.id, a.dataset.col] : null;
+  const raiz = a?.closest?.('#ficha') ? '#ficha' : '#corpo';
+  renderAbas(); renderResumo(); renderCabecalho(); renderCorpo();
+  if (visao === 'graficos') renderGraficos();
+  if (visao === 'hoje') renderHoje();
+  if ($('#ficha').open) renderFicha();
+  if (foco) [...document.querySelectorAll(raiz + ' [data-id]')].find(x => x.dataset.id === foco[0] && x.dataset.col === foco[1])?.focus();
+}
+
+// ---------- listas ----------
+function erroNomeLista(nome, ignorar) {
+  if (!nome) return 'Informe o nome.';
+  if (nome.length > 31) return 'O nome da lista pode ter no máximo 31 caracteres (limite do Excel).';
+  if (/[\[\]:*?\/\\]/.test(nome) || nome.startsWith('_') || nome.startsWith("'") || nome.endsWith("'")) return 'O nome não pode ter [ ] : * ? / \\ nem começar com _.';
+  if (D.listas.some(l => l !== ignorar && mesmoNome(l.nome, nome))) return `Já existe a lista "${nome}".`;
+  return null;
+}
+async function novaLista() {
+  const nome = await pedirTexto('Nome da nova lista (vira uma aba no Excel):');
+  if (nome === null) return;
+  const erro = erroNomeLista(nome);
+  if (erro) return toast(erro);
+  D.listas.push({ nome, registros: [],
+    colunas: [['Nome', 'texto'], ['Etapa', 'etapa'], ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'], ['Etapa desde', 'etapa_desde'], ['Dias na etapa', 'dias_na_etapa']]
+      .map(([nome, tipo]) => ({ nome, tipo, opcoes: [], visivel: true })),
+    etapas: [{ nome: 'Novo', tipo: 'aberta', cor: '#60a5fa' }, { nome: 'Ganho', tipo: 'ganha', cor: '#22c55e' }, { nome: 'Perdido', tipo: 'perdida', cor: '#ef4444' }] });
+  atual = D.listas.length - 1; V.filtros = {}; V.ordem = null;
+  render(); salvar();
+}
+async function renomearLista() {
+  const nome = await pedirTexto('Novo nome da lista:', L().nome);
+  if (nome === null || nome === L().nome) return;
+  const erro = erroNomeLista(nome, L());
+  if (erro) return toast(erro);
+  L().nome = nome; render(); salvar();
+}
+
+// ---------- gerenciador de colunas e etapas ----------
+function erroNome(nome, existentes, oQue) {
+  if (!nome) return `Informe o nome da ${oQue}.`;
+  if (existentes.some(x => mesmoNome(x, nome))) return `Já existe ${oQue} "${nome}".`;
+  return null;
+}
+function usam(c, valor) { return L().registros.filter(r => r[c.nome] === valor).length; }
+function mudou() { salvar(); renderGerenciador(); }
+function mover(arr, i, d) { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; mudou(); }
+function setas(arr, i) {
+  return el('td', { className: 'mover' },
+    el('button', { textContent: '↑', title: 'Subir', disabled: i === 0, onclick: () => mover(arr, i, -1) }),
+    el('button', { textContent: '↓', title: 'Descer', disabled: i === arr.length - 1, onclick: () => mover(arr, i, 1) }));
+}
+// input que, ao mudar, chama fn(novoValor); se fn devolver erro, volta o valor antigo e avisa
+function campo(valor, fn) {
+  const e = el('input', { type: 'text', value: valor, onchange: () => {
+    const erro = fn(e.value.trim());
+    if (erro) { toast(erro); e.value = valor; }
+  } });
+  return e;
+}
+
+function renomearColuna(c, novo) {
+  if (novo === c.nome) return;
+  const erro = erroNome(novo, L().colunas.filter(x => x !== c).map(x => x.nome), 'coluna');
+  if (erro) return erro;
+  if (novo.startsWith('_')) return 'O nome da coluna não pode começar com _.';
+  for (const r of L().registros) if (c.nome in r) { r[novo] = r[c.nome]; delete r[c.nome]; }
+  if (V.ordem === c.nome) V.ordem = novo;
+  if (c.nome in V.filtros) { V.filtros[novo] = V.filtros[c.nome]; delete V.filtros[c.nome]; }
+  c.nome = novo; mudou();
+}
+
+function converter(v, de, para) { // devolve undefined quando não dá para converter
+  const t = TIPOS_DATA.includes(de) ? br(v) : de === 'caixa' ? (v ? 'Sim' : '') : String(v);
+  if (para === 'numero') return deNumero(t);
+  if (para === 'data') return ehData(v) ? v : deBR(t);
+  if (para === 'caixa') return ['sim', 's', 'x', 'true', 'verdadeiro', '1', 'ok'].includes(norm(t.trim()));
+  return t || null;
+}
+async function mudarTipo(c, tipo) {
+  const valores = L().registros.filter(r => r[c.nome] != null);
+  const perdidos = valores.filter(r => converter(r[c.nome], c.tipo, tipo) === undefined).length;
+  if (perdidos && !await confirmar(`${perdidos} valor(es) da coluna "${c.nome}" não podem ser convertidos para ${TIPOS[tipo]} e serão apagados. Continuar?`))
+    return renderGerenciador();
+  for (const r of valores) {
+    const x = converter(r[c.nome], c.tipo, tipo);
+    if (x == null || x === false) delete r[c.nome]; else r[c.nome] = x;
+  }
+  if (tipo === 'selecao') for (const r of valores) if (r[c.nome] && !c.opcoes.includes(r[c.nome])) c.opcoes.push(r[c.nome]);
+  c.tipo = tipo; mudou();
+}
+async function apagarColuna(c) {
+  const n = L().registros.filter(r => r[c.nome] != null).length;
+  if (!await confirmar(`Apagar a coluna "${c.nome}"?` + (n ? `\nOs dados dela em ${n} registro(s) serão perdidos.` : ''))) return;
+  L().colunas = L().colunas.filter(x => x !== c);
+  L().registros.forEach(r => delete r[c.nome]);
+  delete V.filtros[c.nome];
+  if (V.ordem === c.nome) V.ordem = null;
+  mudou();
+}
+function adicionarColuna(nome, tipo) {
+  const erro = erroNome(nome, L().colunas.map(x => x.nome), 'coluna') || (nome.startsWith('_') ? 'O nome da coluna não pode começar com _.' : null)
+    || (tipo === 'servicos' && colServicos() ? `Esta lista já tem a coluna de serviços "${colServicos().nome}".` : null);
+  if (erro) return toast(erro);
+  L().colunas.push({ nome, tipo, opcoes: [], visivel: true, ...(tipo === 'servicos' ? { servicos: [] } : {}) }); mudou();
+}
+
+// catálogo da coluna de serviços
+const usoServico = (c, nome) => L().registros.filter(r => (r[c.nome] || []).some(i => i.servico === nome)).length;
+function renomearServico(c, s, novo) {
+  if (novo === s.nome) return;
+  const erro = erroNome(novo, c.servicos.filter(x => x !== s).map(x => x.nome), 'serviço');
+  if (erro) return erro;
+  for (const r of L().registros) for (const i of r[c.nome] || []) if (i.servico === s.nome) i.servico = novo;
+  if (Array.isArray(V.filtros[c.nome])) V.filtros[c.nome] = V.filtros[c.nome].map(x => x === s.nome ? novo : x);
+  if (c.padrao === s.nome) c.padrao = novo;
+  s.nome = novo; mudou();
+}
+function apagarServico(c, s) {
+  const n = usoServico(c, s.nome);
+  if (n) return toast(`${n} registro(s) têm "${s.nome}". Remova dos registros (ou renomeie o serviço) antes de apagar.`);
+  c.servicos = c.servicos.filter(x => x !== s);
+  if (c.padrao === s.nome) delete c.padrao;
+  mudou();
+}
+function adicionarServico(c, nome, cobranca, preco) {
+  const erro = erroNome(nome, c.servicos.map(x => x.nome), 'serviço') || (preco === undefined ? 'Preço inválido.' : null);
+  if (erro) return toast(erro);
+  c.servicos.push({ nome, cobranca, preco }); mudou();
+}
+function selCobranca(valor, onchange) {
+  const s = el('select', { onchange }, ...Object.entries(COBRANCA).map(([v, t]) => el('option', { value: v, textContent: t })));
+  s.value = valor === 'mensal' ? 'mensal' : 'unico';
+  return s;
+}
+function linhaCatalogo(c) {
+  c.servicos ||= [];
+  const nome = el('input', { type: 'text', placeholder: 'Novo serviço' }), cob = selCobranca('unico'), preco = el('input', { type: 'text', className: 'curto', placeholder: 'preço', inputMode: 'decimal' });
+  return el('tr', { className: 'opcoes' }, el('td', { colSpan: 7 },
+    el('p', { className: 'sis', textContent: 'O preço sugerido entra ao incluir o serviço num registro e pode ser mudado em cada negociação. Mudar aqui não altera valores já lançados.' }),
+    el('table', {}, ...c.servicos.map((s, j) => el('tr', {}, setas(c.servicos, j),
+      el('td', {}, campo(s.nome, novo => renomearServico(c, s, novo))),
+      el('td', {}, selCobranca(s.cobranca, ev => { s.cobranca = ev.target.value; mudou(); })),
+      el('td', {}, el('input', { type: 'text', className: 'curto', inputMode: 'decimal', placeholder: 'preço', title: 'Preço sugerido (R$); vazio = a definir em cada venda',
+        value: typeof s.preco === 'number' ? String(s.preco).replace('.', ',') : '', onchange: ev => {
+          const x = deNumero(ev.target.value);
+          if (x === undefined) { toast('Preço inválido.'); ev.target.value = typeof s.preco === 'number' ? String(s.preco).replace('.', ',') : ''; return; }
+          s.preco = x; mudou();
+        } })),
+      el('td', { className: 'uso', textContent: usoServico(c, s.nome) + ' reg.' }),
+      el('td', {}, el('button', { className: 'icone', textContent: '✕', title: 'Apagar serviço do catálogo', onclick: () => apagarServico(c, s) }))))),
+    el('form', { className: 'adicionar', onsubmit: ev => { ev.preventDefault(); adicionarServico(c, nome.value.trim(), cob.value, deNumero(preco.value)); } },
+      nome, cob, preco, el('button', { textContent: 'Adicionar serviço' }))));
+}
+
+function renomearOpcao(c, i, novo) {
+  const velho = c.opcoes[i];
+  if (novo === velho) return;
+  const erro = erroNome(novo, c.opcoes.filter((_, j) => j !== i), 'opção') || (novo.includes(';') ? 'A opção não pode ter ";".' : null);
+  if (erro) return erro;
+  L().registros.forEach(r => { if (r[c.nome] === velho) r[c.nome] = novo; });
+  if (Array.isArray(V.filtros[c.nome])) V.filtros[c.nome] = V.filtros[c.nome].map(x => x === velho ? novo : x);
+  c.opcoes[i] = novo; mudou();
+}
+async function apagarOpcao(c, i) {
+  const n = usam(c, c.opcoes[i]);
+  if (n && !await confirmar(`${n} registro(s) usam "${c.opcoes[i]}". O valor será apagado deles. Continuar?`)) return;
+  L().registros.forEach(r => { if (r[c.nome] === c.opcoes[i]) delete r[c.nome]; });
+  c.opcoes.splice(i, 1); mudou();
+}
+function adicionarOpcao(c, nome) {
+  const erro = erroNome(nome, c.opcoes, 'opção') || (nome.includes(';') ? 'A opção não pode ter ";".' : null);
+  if (erro) return toast(erro);
+  c.opcoes.push(nome); mudou();
+}
+
+function renomearEtapa(e, novo) {
+  if (novo === e.nome) return;
+  const erro = erroNome(novo, L().etapas.filter(x => x !== e).map(x => x.nome), 'etapa');
+  if (erro) return erro;
+  const ce = colDo('etapa').nome;
+  L().registros.forEach(r => { if (r[ce] === e.nome) r[ce] = novo; });
+  if (Array.isArray(V.filtros[ce])) V.filtros[ce] = V.filtros[ce].map(x => x === e.nome ? novo : x);
+  e.nome = novo; mudou();
+}
+async function apagarEtapa(e) {
+  const l = L(), ce = colDo('etapa').nome, n = usam(colDo('etapa'), e.nome);
+  if (l.etapas.length === 1) return toast('A lista precisa ter pelo menos uma etapa.');
+  if (n) {
+    const destino = await escolher(`${n} registro(s) estão na etapa "${e.nome}".\nPara qual etapa movê-los antes de apagar?`,
+      l.etapas.filter(x => x !== e).map(x => x.nome));
+    if (destino === null) return;
+    l.registros.forEach(r => { if (r[ce] === e.nome) aplicarEtapa(r, destino); });
+  } else if (!await confirmar(`Apagar a etapa "${e.nome}"?`)) return;
+  l.etapas = l.etapas.filter(x => x !== e); mudou();
+}
+function adicionarEtapa(nome) {
+  const erro = erroNome(nome, L().etapas.map(x => x.nome), 'etapa');
+  if (erro) return toast(erro);
+  const abertas = L().etapas.filter(e => e.tipo === 'aberta').length;
+  L().etapas.splice(abertas, 0, { nome, tipo: 'aberta', cor: CORES[L().etapas.length % CORES.length] }); mudou();
+}
+
+function renderGerenciador() {
+  const l = L(), g = $('#gerenciador');
+  const linhasCol = [];
+  l.colunas.forEach((c, i) => {
+    const sis = c.tipo in SISTEMA, sv = c.tipo === 'servicos';
+    const tipo = sis ? el('span', { className: 'sis', textContent: 'Coluna padrão (' + SISTEMA[c.tipo] + ')' })
+      : sv ? el('span', { className: 'sis', textContent: 'Serviços vendidos (itens com valor)' })
+      : el('select', { onchange: ev => mudarTipo(c, ev.target.value) }, ...Object.entries(TIPOS).filter(([v]) => v !== 'servicos').map(([v, t]) => el('option', { value: v, textContent: t })));
+    if (!sis && !sv) tipo.value = c.tipo;
+    let padrao = null;
+    if (sv) { // serviço incluído automaticamente nos registros novos
+      padrao = el('select', { title: 'Serviço incluído automaticamente nos registros novos', onchange: ev => { if (ev.target.value) c.padrao = ev.target.value; else delete c.padrao; mudou(); } },
+        el('option', { value: '', textContent: '(nenhum)' }), ...(c.servicos || []).map(s => el('option', { value: s.nome, textContent: s.nome })));
+      padrao.value = catalogo(c, c.padrao) ? c.padrao : '';
+    } else if (!sis && !['data', 'caixa'].includes(c.tipo)) {
+      padrao = el('input', { type: 'text', className: 'curto', value: c.padrao ?? '', placeholder: 'padrão',
+        title: 'Valor preenchido automaticamente nos registros novos',
+        onchange: ev => { const v = ev.target.value.trim(); if (!v) delete c.padrao; else c.padrao = c.tipo === 'numero' ? (deNumero(v) ?? v) : v; mudou(); } });
+    }
+    linhasCol.push(el('tr', {}, setas(l.colunas, i),
+      el('td', {}, campo(c.nome, novo => renomearColuna(c, novo))),
+      el('td', {}, tipo),
+      el('td', {}, el('label', { title: 'Mostrar na tabela' }, el('input', { type: 'checkbox', checked: c.visivel, onchange: ev => { c.visivel = ev.target.checked; mudou(); } }), ' visível')),
+      el('td', {}, padrao),
+      el('td', {}, c.tipo === 'selecao' || sv ? el('button', { textContent: sv ? `Catálogo (${(c.servicos || []).length})` : `Opções (${c.opcoes.length})`,
+        onclick: () => { opcoesAbertas = opcoesAbertas === c ? null : c; renderGerenciador(); } }) : null),
+      el('td', {}, sis ? null : el('button', { className: 'icone', textContent: '✕', title: 'Apagar coluna', onclick: () => apagarColuna(c) }))));
+    if (opcoesAbertas === c && sv) linhasCol.push(linhaCatalogo(c));
+    if (opcoesAbertas === c && c.tipo === 'selecao') {
+      const novaOp = el('input', { type: 'text', placeholder: 'Nova opção' });
+      linhasCol.push(el('tr', { className: 'opcoes' }, el('td', { colSpan: 7 },
+        el('table', {}, ...c.opcoes.map((o, j) => el('tr', {}, setas(c.opcoes, j),
+          el('td', {}, campo(o, novo => renomearOpcao(c, j, novo))),
+          el('td', { className: 'uso', textContent: usam(c, o) + ' reg.' }),
+          el('td', {}, el('button', { className: 'icone', textContent: '✕', title: 'Apagar opção', onclick: () => apagarOpcao(c, j) }))))),
+        el('form', { className: 'adicionar', onsubmit: ev => { ev.preventDefault(); adicionarOpcao(c, novaOp.value.trim()); } },
+          novaOp, el('button', { textContent: 'Adicionar opção' })))));
+    }
+  });
+  const nomeCol = el('input', { type: 'text', placeholder: 'Nome da nova coluna' });
+  const tipoCol = el('select', {}, ...Object.entries(TIPOS).map(([v, t]) => el('option', { value: v, textContent: t })));
+
+  const ce = colDo('etapa');
+  const linhasEtapa = l.etapas.map((e, i) => {
+    const tipo = el('select', { onchange: ev => { e.tipo = ev.target.value; mudou(); } }, ...Object.entries(TIPOS_ETAPA).map(([v, t]) => el('option', { value: v, textContent: t })));
+    tipo.value = e.tipo;
+    return el('tr', {}, setas(l.etapas, i),
+      el('td', {}, el('input', { type: 'color', value: e.cor, title: 'Cor', onchange: ev => { e.cor = ev.target.value; mudou(); } })),
+      el('td', {}, campo(e.nome, novo => renomearEtapa(e, novo))),
+      el('td', {}, tipo),
+      el('td', {}, el('label', { title: 'Etapa depois da proposta: no funil, o % dela é calculado sobre o total de ofertas' },
+        el('input', { type: 'checkbox', checked: !!e.oferta, onchange: ev => { e.oferta = ev.target.checked; mudou(); } }), ' oferta')),
+      el('td', {}, e.tipo !== 'aberta' ? null : el('label', { title: 'Etapa de produção (antes do contato). Etapas abertas sem esta marca são de venda ativa.' },
+        el('input', { type: 'checkbox', checked: !!e.producao, onchange: ev => { e.producao = ev.target.checked; mudou(); } }), ' produção')),
+      el('td', {}, e.tipo !== 'aberta' ? null : el('input', { type: 'number', min: 1, className: 'curto', value: e.limite ?? '', placeholder: 'limite',
+        title: 'Limite de dias nesta etapa: passou disso, o lead aparece em "Leads parados" na aba Hoje (vazio = sem limite)',
+        onchange: ev => { const n = parseInt(ev.target.value, 10); e.limite = n > 0 ? n : null; mudou(); } })),
+      el('td', { className: 'uso', textContent: usam(ce, e.nome) + ' reg.' }),
+      el('td', {}, el('button', { className: 'icone', textContent: '✕', title: 'Apagar etapa', onclick: () => apagarEtapa(e) })));
+  });
+  const nomeEtapa = el('input', { type: 'text', placeholder: 'Nome da nova etapa' });
+
+  g.replaceChildren(
+    el('div', { className: 'g-topo' }, el('h2', { textContent: `Colunas e etapas — ${l.nome}` }), el('button', { textContent: 'Fechar', onclick: () => g.close() })),
+    el('div', { className: 'g-corpo' },
+      el('section', {}, el('h3', { textContent: 'Colunas' }), el('table', {}, ...linhasCol),
+        el('form', { className: 'adicionar', onsubmit: ev => { ev.preventDefault(); adicionarColuna(nomeCol.value.trim(), tipoCol.value); } },
+          nomeCol, tipoCol, el('button', { textContent: 'Adicionar coluna' }))),
+      el('section', {}, el('h3', { textContent: 'Etapas' }), el('table', {}, ...linhasEtapa),
+        el('form', { className: 'adicionar', onsubmit: ev => { ev.preventDefault(); adicionarEtapa(nomeEtapa.value.trim()); } },
+          nomeEtapa, el('button', { textContent: 'Adicionar etapa' })))));
+}
+
+// ---------- ligações ----------
+$('#btnRecarregar').onclick = () => carregar();
+$('#btnSair').hidden = LOCAL;
+$('#btnSair').onclick = async () => { if (await confirmar('Esquecer a chave de acesso neste aparelho?' + (sujo ? '\nHá alterações ainda não gravadas, que serão perdidas.' : ''))) sair(); };
+function mostrarTema() { $('#btnTema').textContent = document.documentElement.dataset.theme === 'dark' ? '☀' : '☾'; }
+$('#btnTema').onclick = () => {
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('tema', t); } catch (e) {}
+  mostrarTema();
+};
+mostrarTema();
+$('#vHoje').onclick = () => mudarVisao('hoje');
+$('#vTabela').onclick = () => mudarVisao('tabela');
+$('#vGraficos').onclick = () => mudarVisao('graficos');
+$('#btnNovaLista').onclick = novaLista;
+$('#btnRenomearLista').onclick = renomearLista;
+$('#btnNovo').onclick = novoRegistro;
+$('#btnGerenciar').onclick = () => { opcoesAbertas = null; renderGerenciador(); $('#gerenciador').showModal(); };
+$('#gerenciador').onclose = () => render();
+$('#ficha').onclose = () => { fichaReg = null; render(); };
+$('#dlgServicos').onclose = () => render();
+celular.addEventListener('change', () => { if (D) render(); });
+$('#busca').oninput = e => { V.busca = e.target.value; renderCorpo(); };
+$('#agrupar').onchange = e => { V.agrupar = e.target.checked; renderCorpo(); };
+$('#btnLimpar').onclick = () => { V.busca = ''; V.filtros = {}; $('#busca').value = ''; renderCabecalho(); renderCorpo(); };
+window.addEventListener('beforeunload', e => { if (sujo) e.preventDefault(); });
+carregar(false);
+</script>
+</body>
+</html>

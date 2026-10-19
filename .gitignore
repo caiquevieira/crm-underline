@@ -1,0 +1,5 @@
+# dados dos leads: nunca vão para o GitHub
+*.xlsx
+*.json
+backups/
+__pycache__/
