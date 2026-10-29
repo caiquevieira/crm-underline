@@ -53,6 +53,8 @@ PARCERIAS, CLIENTES E CONTATOS
 - Na aba Parcerias, "Segmento" diz se o parceiro é contabilidade, advocacia etc. (opções em "Colunas e etapas").
 - Na aba Clientes, a coluna "Parceiro" guarda o _id do parceiro (não o nome). Para trocar à mão,
   copie o _id da linha do parceiro. Pelo CRM é só escolher na lista.
+- O telefone principal fica na coluna "Telefone" (na tabela, com o botão WhatsApp); as pessoas de contato
+  (nome, cargo, telefone, e-mail) ficam na ficha, em Contatos.
 - Contatos ficam na aba _Contatos: Tipo (parceiro ou cliente), _id do registro, Nome, Cargo, Telefone,
   E-mail, Observação e _id do contato (em linha nova deixe vazio; o CRM preenche).
 

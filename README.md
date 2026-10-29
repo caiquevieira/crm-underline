@@ -34,7 +34,7 @@ com o `Codigo.gs` atualizado (com o antigo aparece um aviso e nada muda). Elas f
 
 - Cada cliente aponta para um parceiro pelo `_id` dele (coluna **Parceiro**, tipo "vínculo").
 - A ficha do parceiro mostra os totais, os clientes ligados e o botão **+ Cliente**.
-- **Importar lista** (na guia Parcerias): cole nome e telefone, uma linha por parceiro; o telefone vira contato.
+- **Importar lista** (na guia Parcerias): cole nome e telefone, uma linha por parceiro; o telefone vai para a coluna **Telefone**.
 - Contatos (vários por registro) ficam na aba `_Contatos`: Tipo (`parceiro`/`cliente`) + `_id do registro`.
 - Apagar um parceiro avisa antes e não apaga os clientes: eles ficam como "(parceiro removido)".
 

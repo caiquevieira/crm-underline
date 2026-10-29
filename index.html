@@ -1173,7 +1173,7 @@ function linksDe(r, comFalta) {
     w ? el('a', { href: w, target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' })
       : k ? el('a', { href: whats(k.telefone), target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' + (k.nome ? ` (${k.nome})` : '') })
       : falta('sem WhatsApp'),
-    w ? el('a', { href: abordagem(r), target: '_blank', rel: 'noopener', className: 'whats', textContent: 'Abordagem', title: 'Abrir o WhatsApp com a mensagem de abordagem pronta' }) : null,
+    w && !p ? el('a', { href: abordagem(r), target: '_blank', rel: 'noopener', className: 'whats', textContent: 'Abordagem', title: 'Abrir o WhatsApp com a mensagem de abordagem pronta' }) : null,
     lp ? el('a', { href: lp, target: '_blank', rel: 'noopener', textContent: 'Link da LP ↗' }) : p && !cl ? null : falta('sem LP')].filter(Boolean);
 }
 
@@ -1231,13 +1231,13 @@ const API_VERSAO = 2; // Codigo.gs / server.py que já gravam papéis, vínculos
 const etapaPadrao = (nome, cor, tipo = 'aberta', oferta = false) => ({ nome, tipo, cor, oferta });
 const PAPEIS = {
   parcerias: { nome: 'Parcerias', singular: 'parceiro', artigo: 'o',
-    colunas: [['Escritório', 'texto'], ['Segmento', 'selecao', ['Contabilidade', 'Advocacia']], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
+    colunas: [['Escritório', 'texto'], ['Telefone', 'telefone'], ['Segmento', 'selecao', ['Contabilidade', 'Advocacia']], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
       ['Comissão combinada', 'texto'], ['Observações', 'texto']],
     etapas: [etapaPadrao('Prospecção', '#94a3b8'), etapaPadrao('Contato feito', '#60a5fa'), etapaPadrao('Reunião agendada', '#38bdf8'),
       etapaPadrao('Reunião realizada', '#a78bfa'), etapaPadrao('Piloto combinado', '#fbbf24'), etapaPadrao('Piloto em andamento', '#fb923c'),
       etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Pausado/Perdido', '#ef4444', 'perdida')] },
   clientes: { nome: 'Clientes', singular: 'cliente', artigo: 'o', pai: 'parcerias', removido: '(parceiro removido)',
-    colunas: [['Empresa', 'texto'], ['Parceiro', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
+    colunas: [['Empresa', 'texto'], ['Telefone', 'telefone'], ['Parceiro', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
       ['Data de início', 'data'], ['Observações', 'texto']],
     etapas: [etapaPadrao('Indicado', '#94a3b8'), etapaPadrao('Contato com o dono', '#60a5fa'), etapaPadrao('Diagnóstico agendado', '#38bdf8'),
       etapaPadrao('Diagnóstico em andamento', '#a78bfa'), etapaPadrao('Relatório entregue', '#f472b6'), etapaPadrao('Proposta enviada', '#fbbf24', 'aberta', true),
@@ -1265,11 +1265,12 @@ function clientesDe(r) {
   return cv ? lc.registros.filter(x => x[cv.nome] === r._id) : [];
 }
 
-// Cria as listas da parceria que faltarem (só com Codigo.gs / server.py novos). Devolve true se criou.
+// Cria as listas da parceria que faltarem (só com Codigo.gs / server.py novos). Devolve true se mudou algo.
 function garantirParceria() {
   let criou = false;
   for (const [papel, p] of Object.entries(PAPEIS)) {
-    if (listaDo(papel)) continue;
+    const existente = listaDo(papel);
+    if (existente) { criou = colunaTelefone(existente, p) || criou; continue; }
     let nome = p.nome;
     for (let i = 2; D.listas.some(l => mesmoNome(l.nome, nome)); i++) nome = `${p.nome} ${i}`;
     const colunas = [...p.colunas, ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'], ['Etapa desde', 'etapa_desde'], ['Dias na etapa', 'dias_na_etapa']];
@@ -1278,6 +1279,20 @@ function garantirParceria() {
     criou = true;
   }
   return criou;
+}
+// Telefone principal fica numa coluna (aparece na tabela e no cartão). Lista criada antes dessa coluna ganha a
+// coluna, e o contato que só tinha telefone (o que a importação criava) passa para ela.
+function colunaTelefone(l, p) {
+  if (l.colunas.some(c => c.tipo === 'telefone')) return false;
+  let nome = 'Telefone';
+  while (l.colunas.some(c => mesmoNome(c.nome, nome))) nome += ' (2)';
+  l.colunas.splice(1, 0, { nome, tipo: 'telefone', opcoes: [], visivel: true });
+  const soTelefone = k => k.telefone && !['nome', 'cargo', 'email', 'obs'].some(f => k[f]);
+  for (const r of l.registros) {
+    const k = contatosDe(p.singular, r._id).find(soTelefone);
+    if (k) { r[nome] = k.telefone; D.contatos = D.contatos.filter(x => x !== k); }
+  }
+  return true;
 }
 
 // muda para a lista l e abre a ficha de r (ex.: cliente aberto a partir do parceiro)
@@ -1346,7 +1361,7 @@ function clientesDoParceiro(r) {
 
 // ---------- importar lista de parceiros ----------
 // Uma linha por parceiro, como copiada de uma planilha: nome e, no fim, o telefone (separado por tab, ";" ou espaços).
-// O telefone vira um contato do parceiro. Cabeçalho ("Contabilidade  Telefone") e nomes que já existem são pulados.
+// O telefone vai para a coluna Telefone (ou vira contato, se a lista não tiver essa coluna). Cabeçalho ("Contabilidade  Telefone") e nomes que já existem são pulados.
 function linhasImportacao(texto) {
   const linhas = texto.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
   if (linhas.length && /telefone/i.test(linhas[0]) && !/\d/.test(linhas[0])) linhas.shift(); // cabeçalho
@@ -1381,13 +1396,14 @@ function abrirImportar() {
   };
   texto.oninput = atualizar;
   botao.onclick = () => {
-    const cn = l.colunas[0].nome;
+    const cn = l.colunas[0].nome, ct = colTipo(l, 'telefone');
     for (const x of [...novos].reverse()) { // unshift ao contrário: fica na ordem colada, no topo da lista
       const r = registroNovo(l);
       r[cn] = x.nome;
       if (seg?.value) r[cs.nome] = seg.value;
       l.registros.unshift(r);
-      if (x.telefone) D.contatos.push({ _id: novoId(), tipo: p.singular, ref: r._id, telefone: x.telefone });
+      if (x.telefone && ct) r[ct.nome] = x.telefone;
+      else if (x.telefone) D.contatos.push({ _id: novoId(), tipo: p.singular, ref: r._id, telefone: x.telefone });
     }
     d.close(); render(); salvar();
     toast(`${novos.length} ${p.singular}(s) importado(s) em "${etapaPadraoDe(l)}".`, false);
@@ -1395,7 +1411,7 @@ function abrirImportar() {
   d.replaceChildren(
     el('div', { className: 'g-topo' }, el('h2', { textContent: `Importar lista — ${l.nome}` }), el('button', { textContent: 'Fechar', onclick: () => d.close() })),
     el('div', { className: 'imp-corpo' },
-      el('p', { textContent: `Cole uma linha por ${p.singular}: nome e telefone no fim (pode copiar duas colunas de uma planilha). Entram na etapa "${etapaPadraoDe(l)}"; o telefone vira um contato.` }),
+      el('p', { textContent: `Cole uma linha por ${p.singular}: nome e telefone no fim (pode copiar duas colunas de uma planilha). Entram na etapa "${etapaPadraoDe(l)}"; o telefone vai para a coluna ${colTipo(l, 'telefone')?.nome || 'de contatos'}.` }),
       texto, seg ? el('label', {}, `${cs.nome}:`, seg) : null, previa,
       el('div', { className: 'botoes' }, el('button', { type: 'button', textContent: 'Cancelar', onclick: () => d.close() }), botao)));
   d.showModal();
@@ -1712,7 +1728,7 @@ function celula(r, c) {
   return el('div', { className: 'comLink' }, e, el('a', {
     href, target: '_blank', rel: 'noopener', className: c.tipo === 'telefone' ? 'whats' : '',
     textContent: c.tipo === 'telefone' ? 'WhatsApp' : '↗', title: c.tipo === 'telefone' ? 'Abrir no WhatsApp' : 'Abrir site'
-  }), c.tipo === 'telefone' ? el('a', {
+  }), c.tipo === 'telefone' && !PAPEIS[L().papel] ? el('a', { // a mensagem de abordagem é a das Landing Pages
     href: abordagem(r), target: '_blank', rel: 'noopener', className: 'whats',
     textContent: 'Abordagem', title: 'Abrir o WhatsApp com a mensagem de abordagem pronta'
   }) : null);
