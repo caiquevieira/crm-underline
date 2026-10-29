@@ -473,7 +473,9 @@ const etapaDe = r => L().etapas.find(e => e.nome === r[colDo('etapa').nome]);
 // fase: "producao" (antes do contato), "ativa" (venda ativa) ou "final" (ganha/perdida)
 const fase = e => !e ? null : e.tipo !== 'aberta' ? 'final' : e.producao ? 'producao' : 'ativa';
 const faseDe = r => fase(etapaDe(r));
-const ehRecusa = r => { const e = etapaDe(r); return !!(e && e.tipo === 'perdida' && e.oferta); }; // perdida depois da oferta
+// recusa = perdida depois da oferta; desqualificado nunca é recusa, mesmo que a etapa esteja marcada como "oferta"
+const ehEtapaRecusa = e => !!(e && e.tipo === 'perdida' && e.oferta && !/desqualific/i.test(e.nome));
+const ehRecusa = r => ehEtapaRecusa(etapaDe(r));
 const colPor = re => L().colunas.find(c => re.test(c.nome));
 const colMotivo = () => colPor(/^motivo/i);
 const colFim = () => colPor(/^data fim$/i);
@@ -836,10 +838,13 @@ function renderResumo() {
 
   const extras = [];
   const vendas = etapasOferta.filter(e => e.tipo === 'ganha').reduce((s, e) => s + conta(e), 0);
-  if (ofertas) { // projeção: o que está antes da oferta (etapas abertas) × taxa de venda das ofertas
+  // projeção: o que está antes da oferta (etapas abertas) × taxa de ganho das ofertas já decididas,
+  // vendas ÷ (vendas + recusas). Desqualificados e ofertas ainda em aberto não entram na taxa.
+  const recusas = l.etapas.filter(ehEtapaRecusa).reduce((s, e) => s + conta(e), 0);
+  if (vendas + recusas) {
     const andamento = l.etapas.filter(e => !e.oferta && e.tipo === 'aberta').reduce((s, e) => s + conta(e), 0);
-    const taxa = vendas / ofertas;
-    extras.push(el('div', { className: 'cartao', title: `${andamento} registro(s) em etapas abertas antes da oferta × ${pct(vendas, ofertas)} de vendas sobre as ofertas` },
+    const taxa = vendas / (vendas + recusas);
+    extras.push(el('div', { className: 'cartao', title: `${andamento} registro(s) em etapas abertas antes da oferta × ${pct(vendas, vendas + recusas)} de taxa de ganho (${vendas} vendas ÷ ${vendas + recusas} vendas + recusas). Desqualificados não entram na taxa.` },
       el('b', { textContent: '≈ ' + num(andamento * taxa, 1) }), el('span', { textContent: `vendas projetadas (${andamento} em andamento)` })));
   }
   const atr = l.registros.filter(atrasado).length, sp = l.registros.filter(semProximaAcao).length;
