@@ -33,8 +33,13 @@ ABA_HIST = "_Historico"  # mudanças de etapa: uma linha por mudança
 CAB_HIST = ["Lista", "_id", "Data", "De", "Para"]
 ABA_ITENS = "_Servicos"  # serviços vendidos: uma linha por item de cada registro
 CAB_ITENS = ["Lista", "_id", "Serviço", "Cobrança", "Valor"]
+ABA_CONTATOS = "_Contatos"  # contatos de parceiros e clientes: uma linha por contato
+CAB_CONTATOS = ["Tipo", "_id do registro", "Nome", "Cargo", "Telefone", "E-mail", "Observação", "_id"]
+CAMPOS_CONTATO = ["nome", "cargo", "telefone", "email", "obs"]
+VERSAO_API = 2  # o index.html só cria Parcerias/Clientes/Contatos com esta versão ou mais nova
 COBRANCAS = {"unico": "Único", "mensal": "Mensal"}
-TIPOS_COLUNA = ["texto", "numero", "data", "selecao", "url", "telefone", "caixa", "servicos"]
+# "vinculo": guarda o _id de um registro de outra lista (ex.: o cliente aponta para o parceiro)
+TIPOS_COLUNA = ["texto", "numero", "data", "selecao", "url", "telefone", "caixa", "servicos", "vinculo"]
 # Colunas que toda lista tem. O tipo identifica a coluna, então o nome pode ser trocado.
 COLUNAS_SISTEMA = [("Etapa", "etapa"), ("Próxima ação", "proxima_acao"),
                    ("Data da próxima ação", "data_proxima_acao"),
@@ -185,7 +190,9 @@ def ler_config(wb):
             continue
         c = cfg.setdefault(str(lista).strip(), {"colunas": [], "etapas": [], "servicos": []})
         nome, tipo, item = str(nome).strip(), str(tipo or "").strip().lower(), str(item or "").strip().lower()
-        if item in ("servico", "serviço"):  # catálogo da coluna de serviços; Padrão = preço sugerido
+        if item == "papel":  # papel fixo da lista (parcerias, clientes): vale mesmo se a lista for renomeada
+            c["papel"] = nome
+        elif item in ("servico", "serviço"):  # catálogo da coluna de serviços; Padrão = preço sugerido
             if nome not in [s["nome"] for s in c["servicos"]]:
                 c["servicos"].append({"nome": nome, "cobranca": cobranca(tipo), "preco": numero(padrao)})
         elif item == "etapa":
@@ -238,9 +245,33 @@ def completar(lista):
     return mudou
 
 
+def ler_contatos(wb):
+    """Contatos da aba _Contatos; devolve (contatos, mudou) — mudou quando algum _id precisou ser criado."""
+    contatos, ids, mudou = [], set(), False
+    if ABA_CONTATOS not in wb.sheetnames:
+        return contatos, mudou
+    for l in wb[ABA_CONTATOS].iter_rows(min_row=2, values_only=True):
+        l = list(l)[:8] + [None] * (8 - len(l))
+        tipo, ref = (str(x).strip() if x is not None else "" for x in l[:2])
+        if not tipo or not ref:
+            continue
+        k = {"tipo": tipo, "ref": ref}
+        for f, v in zip(CAMPOS_CONTATO, l[2:7]):
+            v = ler_valor(v, "texto")
+            if v is not None:
+                k[f] = str(v)
+        rid = str(l[7]).strip() if l[7] is not None else ""
+        if not rid or rid in ids:
+            rid, mudou = novo_id(), True
+        ids.add(rid)
+        k["_id"] = rid
+        contatos.append(k)
+    return contatos, mudou
+
+
 def ler():
     if not ARQ.exists():
-        return {"listas": [nova_lista("Leads")], "mtime": None, "precisaSalvar": True}
+        return {"listas": [nova_lista("Leads")], "contatos": [], "mtime": None, "precisaSalvar": True, "versaoApi": VERSAO_API}
     versao = mtime()
     wb = openpyxl.load_workbook(ARQ)
     cfg = ler_config(wb)
@@ -258,7 +289,8 @@ def ler():
                 if isinstance(v, (int, float)):
                     it["valor"] = v
                 itens.setdefault((str(lista), str(rid).strip()), []).append(it)
-    listas, mudou = [], False
+    contatos, mudou = ler_contatos(wb)
+    listas = []
     por_nome = {n.casefold(): t for n, t in COLUNAS_SISTEMA}
     for ws in wb.worksheets:
         if ws.title.startswith("_"):
@@ -299,11 +331,13 @@ def ler():
             registros.append(r)
         lista = {"nome": ws.title, "colunas": c["colunas"], "etapas": c["etapas"], "registros": registros,
                  "historico": hist.get(ws.title, [])}
+        if c.get("papel"):
+            lista["papel"] = c["papel"]
         mudou = completar(lista) or mudou
         listas.append(lista)
     if not listas:
         listas, mudou = [nova_lista("Leads")], True
-    return {"listas": listas, "mtime": versao, "precisaSalvar": mudou}
+    return {"listas": listas, "contatos": contatos, "mtime": versao, "precisaSalvar": mudou, "versaoApi": VERSAO_API}
 
 
 # ---------- gravação ----------
@@ -312,7 +346,7 @@ def validar(estado):
     listas = estado.get("listas") or []
     if not listas:
         raise ValueError("É preciso ter pelo menos uma lista.")
-    vistos = set()
+    vistos, papeis = set(), set()
     for l in listas:
         n = l.get("nome", "")
         if not n or len(n) > 31 or re.search(r"[\[\]:*?/\\]", n) or n.startswith(("_", "'")) or n.endswith("'"):
@@ -320,12 +354,16 @@ def validar(estado):
         if n.casefold() in vistos:
             raise ValueError(f'Lista repetida: "{n}".')
         vistos.add(n.casefold())
+        if l.get("papel") and l["papel"] in papeis:
+            raise ValueError(f'Duas listas com o papel "{l["papel"]}".')
+        if l.get("papel"):
+            papeis.add(l["papel"])
         nomes = [c["nome"].casefold() for c in l["colunas"]]
         if any(not c["nome"] or c["nome"].startswith("_") for c in l["colunas"]) or len(set(nomes)) != len(nomes):
             raise ValueError(f'Lista "{n}": nomes de coluna vazios, repetidos ou começando com _.')
         tipos = [c["tipo"] for c in l["colunas"]]
         if (any(t not in TIPOS_COLUNA + TIPOS_SISTEMA for t in tipos) or any(tipos.count(t) != 1 for t in TIPOS_SISTEMA)
-                or tipos.count("servicos") > 1):
+                or tipos.count("servicos") > 1 or tipos.count("vinculo") > 1):
             raise ValueError(f'Lista "{n}": tipos de coluna inválidos.')
         etapas = [e["nome"].casefold() for e in l["etapas"]]
         if not etapas or len(set(etapas)) != len(etapas) or any(e["tipo"] not in TIPOS_ETAPA for e in l["etapas"]):
@@ -363,12 +401,17 @@ def fazer_backup():
 
 def gravar(estado):
     validar(estado)
+    contatos = estado.get("contatos")
+    if not isinstance(contatos, list):  # um CRM de versão antiga não manda os contatos: mantém os do arquivo
+        contatos = ler_contatos(openpyxl.load_workbook(ARQ))[0] if ARQ.exists() else []
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     config, itens = [], []
     for l in estado["listas"]:
         ws = wb.create_sheet(l["nome"])
         cols = l["colunas"]
+        if l.get("papel"):
+            config.append([l["nome"], "papel", l["papel"], None, None, 0, None, None, None, None, None, None])
         ws.append([limpo(c["nome"]) for c in cols] + ["_id"])
         desde = next(get_column_letter(i) for i, c in enumerate(cols, 1) if c["tipo"] == "etapa_desde")
         for n, r in enumerate(l["registros"], start=2):
@@ -410,6 +453,16 @@ def gravar(estado):
     for linha in itens:
         wi.append([limpo(x) for x in linha])
     formatar(wi, [col(n, "texto") for n in CAB_ITENS])
+    wk = wb.create_sheet(ABA_CONTATOS)
+    wk.append(CAB_CONTATOS)
+    for k in contatos:
+        if isinstance(k, dict) and k.get("tipo") and k.get("ref"):
+            wk.append([limpo(str(k["tipo"])), limpo(str(k["ref"]))] + [limpo(str(k[f])) if k.get(f) is not None else None for f in CAMPOS_CONTATO]
+                      + [limpo(str(k.get("_id") or novo_id()))])
+    for linha in wk.iter_rows(min_row=2):
+        for cell in linha:
+            cell.number_format = "@"
+    formatar(wk, [col(n, "texto") for n in CAB_CONTATOS])
     wc = wb.create_sheet(ABA_CONFIG)
     wc.append(CAB_CONFIG)
     for linha in config:
