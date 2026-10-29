@@ -13,8 +13,12 @@ const ABA_HIST = '_Historico'; // mudanças de etapa: uma linha por mudança
 const CAB_HIST = ['Lista', '_id', 'Data', 'De', 'Para'];
 const ABA_ITENS = '_Servicos'; // serviços vendidos: uma linha por item de cada registro
 const CAB_ITENS = ['Lista', '_id', 'Serviço', 'Cobrança', 'Valor'];
+const ABA_CONTATOS = '_Contatos'; // contatos de contabilidades e clientes: uma linha por contato
+const CAB_CONTATOS = ['Tipo', '_id do registro', 'Nome', 'Cargo', 'Telefone', 'E-mail', 'Observação', '_id'];
+const CAMPOS_CONTATO = ['nome', 'cargo', 'telefone', 'email', 'obs'];
 const COBRANCAS = { unico: 'Único', mensal: 'Mensal' };
-const TIPOS_COLUNA = ['texto', 'numero', 'data', 'selecao', 'url', 'telefone', 'caixa', 'servicos'];
+// "vinculo": guarda o _id de um registro de outra lista (ex.: o cliente aponta para a contabilidade)
+const TIPOS_COLUNA = ['texto', 'numero', 'data', 'selecao', 'url', 'telefone', 'caixa', 'servicos', 'vinculo'];
 // Colunas que toda lista tem. O tipo identifica a coluna, então o nome pode ser trocado.
 const COLUNAS_SISTEMA = [['Etapa', 'etapa'], ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'],
   ['Etapa desde', 'etapa_desde'], ['Dias na etapa', 'dias_na_etapa']];
@@ -22,6 +26,7 @@ const TIPOS_SISTEMA = COLUNAS_SISTEMA.map(c => c[1]);
 const TIPOS_DATA = ['data', 'etapa_desde', 'data_proxima_acao'];
 const TIPOS_ETAPA = ['aberta', 'ganha', 'perdida'];
 const PROPS = PropertiesService.getScriptProperties();
+const VERSAO_API = 2; // o index.html só cria Contabilidades/Clientes/Contatos com esta versão ou mais nova
 
 // ---------- instalação ----------
 
@@ -43,7 +48,7 @@ function doGet() {
 }
 
 // Corpo em texto JSON (Content-Type text/plain evita a verificação CORS que o Apps Script não atende):
-// { chave, acao: 'ler' } ou { chave, acao: 'salvar', mtime, forcar, listas }
+// { chave, acao: 'ler' } ou { chave, acao: 'salvar', mtime, forcar, listas, contatos }
 // O Apps Script sempre responde 200; erros vêm em { codigo, erro } com os mesmos códigos do server.py.
 function doPost(e) {
   let req;
@@ -176,7 +181,9 @@ function lerConfig(ss) {
     lista = String(lista).trim();
     const c = cfg[lista] || (cfg[lista] = { colunas: [], etapas: [], servicos: [] });
     nome = String(nome).trim(); tipo = String(tipo).trim().toLowerCase(); item = String(item).trim().toLowerCase();
-    if (item === 'servico' || item === 'serviço') { // catálogo da coluna de serviços; Padrão = preço sugerido
+    if (item === 'papel') { // papel fixo da lista (contabilidades, clientes): vale mesmo se a lista for renomeada
+      c.papel = nome;
+    } else if (item === 'servico' || item === 'serviço') { // catálogo da coluna de serviços; Padrão = preço sugerido
       if (!c.servicos.some(s => s.nome === nome)) c.servicos.push({ nome: nome, cobranca: cobranca(tipo), preco: numero(padrao) });
     } else if (item === 'etapa') {
       if (!c.etapas.some(e => e.nome === nome))
@@ -241,8 +248,19 @@ function ler() {
     const k = lista + '\u0000' + String(rid).trim();
     (itens[k] || (itens[k] = [])).push(it);
   }
-  const listas = [];
+  const contatos = [], idsContato = new Set();
   let mudou = false;
+  for (const l of linhas(ss, ABA_CONTATOS, CAB_CONTATOS.length)) {
+    const [tipo, ref] = l, k = { tipo: String(tipo).trim(), ref: String(ref).trim() };
+    if (vazio(tipo) || vazio(ref)) continue;
+    CAMPOS_CONTATO.forEach((f, i) => { if (!vazio(l[i + 2])) k[f] = lerValor(l[i + 2], 'texto', tz); });
+    let id = vazio(l[7]) ? '' : String(l[7]).trim();
+    if (!id || idsContato.has(id)) { id = novoId(); mudou = true; }
+    idsContato.add(id);
+    k._id = id;
+    contatos.push(k);
+  }
+  const listas = [];
   const porNome = {};
   for (const [n, t] of COLUNAS_SISTEMA) porNome[n.toLowerCase()] = t;
   for (const ws of ss.getSheets()) {
@@ -280,11 +298,12 @@ function ler() {
       registros.push(r);
     }
     const lista = { nome: titulo, colunas: c.colunas, etapas: c.etapas, registros: registros, historico: hist[titulo] || [] };
+    if (c.papel) lista.papel = c.papel;
     mudou = completar(lista) || mudou;
     listas.push(lista);
   }
   if (!listas.length) { listas.push(novaLista('Leads')); mudou = true; }
-  return { listas: listas, mtime: versao(), precisaSalvar: mudou };
+  return { listas: listas, contatos: contatos, mtime: versao(), precisaSalvar: mudou, versaoApi: VERSAO_API };
 }
 
 // ---------- gravação ----------
@@ -298,18 +317,20 @@ function erroValidacao(msg) {
 function validar(estado) {
   const listas = estado.listas || [];
   if (!listas.length) throw erroValidacao('É preciso ter pelo menos uma lista.');
-  const vistos = new Set();
+  const vistos = new Set(), papeis = new Set();
   for (const l of listas) {
     const n = l.nome || '';
     if (!n || n.length > 31 || /[\[\]:*?\/\\]/.test(n) || n.startsWith('_') || n.startsWith("'") || n.endsWith("'"))
       throw erroValidacao(`Nome de lista inválido: "${n}" (até 31 caracteres, sem [ ] : * ? / \\ e sem começar com _).`);
     if (vistos.has(n.toLowerCase())) throw erroValidacao(`Lista repetida: "${n}".`);
     vistos.add(n.toLowerCase());
+    if (l.papel && papeis.has(l.papel)) throw erroValidacao(`Duas listas com o papel "${l.papel}".`);
+    if (l.papel) papeis.add(l.papel);
     const nomes = l.colunas.map(c => c.nome.toLowerCase());
     if (l.colunas.some(c => !c.nome || c.nome.startsWith('_')) || new Set(nomes).size !== nomes.length)
       throw erroValidacao(`Lista "${n}": nomes de coluna vazios, repetidos ou começando com _.`);
     const tipos = l.colunas.map(c => c.tipo), conta = t => tipos.filter(x => x === t).length;
-    if (tipos.some(t => !TIPOS_COLUNA.includes(t) && !TIPOS_SISTEMA.includes(t)) || TIPOS_SISTEMA.some(t => conta(t) !== 1) || conta('servicos') > 1)
+    if (tipos.some(t => !TIPOS_COLUNA.includes(t) && !TIPOS_SISTEMA.includes(t)) || TIPOS_SISTEMA.some(t => conta(t) !== 1) || conta('servicos') > 1 || conta('vinculo') > 1)
       throw erroValidacao(`Lista "${n}": tipos de coluna inválidos.`);
     const etapas = l.etapas.map(e => e.nome.toLowerCase());
     if (!etapas.length || new Set(etapas).size !== etapas.length || l.etapas.some(e => !TIPOS_ETAPA.includes(e.tipo)))
@@ -352,6 +373,7 @@ function gravar(estado) {
       }
       return r[c.nome] == null ? '' : r[c.nome]; // datas vão como "aaaa-mm-dd" e a planilha converte em data
     }).concat([String(r._id)]));
+    if (l.papel) config.push([l.nome, 'papel', l.papel, '', '', 0, '', '', '', '', '', '']);
     const ws = escreverAba(ss, l.nome, cols.map(c => c.nome).concat(['_id']), dados, cols.map(c => formatoDe(c.tipo)).concat(['@']));
     ws.getRange(1, cols.length + 1, Math.max(1, dados.length + 1), 1).setFontColor('#9ca3af');
     cols.forEach((c, i) => {
@@ -366,6 +388,11 @@ function gravar(estado) {
   });
   escreverAba(ss, ABA_HIST, CAB_HIST, hist, ['@', '@', 'dd/mm/yyyy', '@', '@']);
   escreverAba(ss, ABA_ITENS, CAB_ITENS, itens, ['@', '@', '@', '@', null]);
+  // contatos: só regrava quando vierem (um CRM de versão antiga não manda e não pode apagá-los)
+  if (Array.isArray(estado.contatos))
+    escreverAba(ss, ABA_CONTATOS, CAB_CONTATOS, estado.contatos.filter(k => k && !vazio(k.tipo) && !vazio(k.ref))
+      .map(k => [String(k.tipo), String(k.ref)].concat(CAMPOS_CONTATO.map(f => k[f] == null ? '' : String(k[f])), [String(k._id || novoId())])),
+      CAB_CONTATOS.map(() => '@'));
   escreverAba(ss, ABA_CONFIG, CAB_CONFIG, config, ['@', '@', '@', '@', '@', null, null, '@', null, null, null, null]);
   // abas de listas apagadas ou renomeadas saem; a ordem das abas segue a ordem das listas
   const nomes = estado.listas.map(l => l.nome);

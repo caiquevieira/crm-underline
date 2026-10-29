@@ -331,6 +331,36 @@
     .g-corpo { padding: 12px; }
   }
 
+  /* parceria: totais da contabilidade, clientes ligados e contatos (na ficha) */
+  .t-vinculo { min-width: 190px; }
+  .comLink select { flex: 1; min-width: 0; }
+  .comLink button.ir { padding: 0 8px; border: 0; background: none; color: var(--link); }
+  .p-tiles { margin: 12px 18px 0; }
+  .tile.texto b { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+  .p-secao { padding: 0 18px 14px; }
+  .p-secao h3 { margin: 4px 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .p-secao h3 .n { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: var(--chip); }
+  .p-secao h3 button { margin-left: auto; }
+  .p-cliente { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; text-align: left; margin-bottom: 6px; padding: 8px 10px; }
+  .p-cliente b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-cliente .chip { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .p-cliente small { color: var(--suave); white-space: nowrap; }
+  .k-item { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 6px; align-items: center; padding: 8px; margin-bottom: 6px; border: 1px solid var(--borda); border-radius: 6px; }
+  .k-item input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); }
+  .k-item .k-obs { grid-column: 1 / 3; }
+  .k-item .links { grid-column: 3 / 6; }
+  .k-item > button.icone { grid-column: 5; grid-row: 1; }
+  @media (max-width: 700px) {
+    .p-tiles { margin: 12px 12px 0; }
+    .p-secao { padding: 0 12px 12px; }
+    .p-cliente { grid-template-columns: minmax(0, 1fr) auto; }
+    .p-cliente small { grid-column: 1 / -1; }
+    .k-item { grid-template-columns: minmax(0, 1fr) auto; }
+    .k-item > *, .k-item .k-obs, .k-item .links { grid-column: 1 / -1; }
+    .k-item .k-nome { grid-column: 1; }
+    .k-item > button.icone { grid-column: 2; grid-row: 1; }
+  }
+
   #conectar form { padding: 18px; width: min(420px, 90vw); display: flex; flex-direction: column; gap: 12px; }
   #conectar h2 { margin: 0; font-size: 16px; }
   #conectar p { margin: 0; color: var(--suave); }
@@ -478,6 +508,7 @@ const colPor = re => L().colunas.find(c => re.test(c.nome));
 const colMotivo = () => colPor(/^motivo/i);
 const colFim = () => colPor(/^data fim$/i);
 const colValor = () => L().colunas.find(c => c.tipo === 'numero' && /valor/i.test(c.nome));
+const colMensal = () => L().colunas.find(c => c.tipo === 'numero' && /mensal/i.test(c.nome) && c !== colValor());
 const colWhats = () => L().colunas.find(c => c.tipo === 'telefone');
 
 // ---------- serviços vendidos ----------
@@ -493,10 +524,11 @@ function somaItens(itens) {
   return s;
 }
 // { unico, mensal } do registro; lista sem coluna de serviços usa a coluna numérica "Valor" como valor único
+// e a numérica "Mensal…" (ex.: Mensalidade) como valor mensal
 function valoresDe(r) {
   if (colServicos()) return somaItens(itensDe(r));
-  const cv = colValor();
-  return { unico: cv && typeof r[cv.nome] === 'number' ? r[cv.nome] : 0, mensal: 0 };
+  const n = c => c && typeof r[c.nome] === 'number' ? r[c.nome] : 0;
+  return { unico: n(colValor()), mensal: n(colMensal()) };
 }
 function somaValores(lista, fn = valoresDe) {
   const s = { unico: 0, mensal: 0 };
@@ -658,6 +690,7 @@ function textoDe(r, c) {
   if (c.tipo === 'caixa') return v ? 'sim' : 'não';
   if (c.tipo === 'numero') return String(v).replace('.', ',');
   if (c.tipo === 'servicos') return Array.isArray(v) ? resumoServicos(v) : '';
+  if (c.tipo === 'vinculo') return rotuloVinculo(L(), v);
   return String(v);
 }
 
@@ -748,11 +781,16 @@ async function carregar(perguntar = true) {
   }
   const nomeAtual = D && L().nome;
   D = j;
+  D.contatos ||= [];
+  // Contabilidades/Clientes/Contatos precisam do Codigo.gs (ou server.py) novo: o antigo recusaria o tipo "vinculo" e perderia os contatos
+  const novaApi = (j.versaoApi || 0) >= API_VERSAO, criou = novaApi && garantirParceria();
   atual = Math.max(0, D.listas.findIndex(l => l.nome === nomeAtual));
   clearTimeout(timer); sujo = false; pendente = false;
   esconderAviso(); mostrarStatus(LOCAL ? 'Carregado do disco' : 'Carregado da planilha');
   render();
-  if (j.precisaSalvar) salvar();
+  if (!novaApi) mostrarAviso(LOCAL ? 'O server.py em execução é de uma versão antiga: feche a janela preta e abra o iniciar.bat de novo para ver Contabilidades, Clientes e Contatos.'
+    : 'O Apps Script da planilha é de uma versão antiga: as guias Contabilidades e Clientes (e os contatos) aparecem depois de colar o apps-script/Codigo.gs novo e publicar uma nova versão (veja o README).');
+  if (j.precisaSalvar || criou) salvar();
 }
 
 function salvar() {
@@ -766,7 +804,7 @@ async function enviar(forcar = false) {
   salvando = true; pendente = false; mostrarStatus('Salvando…');
   let res = null, j = {};
   try {
-    res = await api('salvar', { mtime: D.mtime, listas: D.listas, forcar });
+    res = await api('salvar', { mtime: D.mtime, listas: D.listas, contatos: D.contatos, forcar });
     j = res.j;
   } catch (e) { res = null; }
   salvando = false;
@@ -939,7 +977,8 @@ function renderGraficos() {
   const tilesDinheiro = [
     tile('Receita fechada', brl(rec.unico), `${ganhos.length} venda${ganhos.length === 1 ? '' : 's'}`,
       cs ? 'Soma dos serviços de cobrança única nas vendas' : colValor() ? `Soma de "${colValor().nome}" nas vendas` : 'Crie uma coluna de Serviços em "Colunas e etapas"'),
-    cs ? tile('Recorrente fechado', brl(rec.mensal) + '/mês', 'serviços mensais vendidos', 'Soma dos serviços de cobrança mensal nas vendas') : null,
+    cs || colMensal() ? tile('Recorrente fechado', brl(rec.mensal) + '/mês', cs ? 'serviços mensais vendidos' : `"${colMensal().nome}" das vendas`,
+      cs ? 'Soma dos serviços de cobrança mensal nas vendas' : `Soma de "${colMensal().nome}" nas vendas`) : null,
     tile('Pipeline ativo', brl(pipe.unico), `${maisMensal(pipe)}${ativos.length} leads em venda ativa`),
     tile('Pipeline ponderado', '≈ ' + brl(ponderado.unico),
       maisMensal(ponderado) + (usouGeral.length ? `⚠ taxa geral (${pct(ganhos.length, fechados)}) em ${usouGeral.length} etapa${usouGeral.length > 1 ? 's' : ''}: histórico insuficiente` : 'taxa histórica de cada etapa'),
@@ -1110,21 +1149,25 @@ function itemHoje(r, detalhe, comMover) {
   return item;
 }
 // WhatsApp, Abordagem e link da LP; comFalta: mostra "sem WhatsApp"/"sem LP" quando não houver
+// listas da parceria: sem coluna de telefone, o WhatsApp é o do primeiro contato que tiver telefone
 function linksDe(r, comFalta) {
-  const cw = colWhats(), cl = colLink();
+  const cw = colWhats(), cl = colLink(), p = PAPEIS[L().papel];
   const w = cw && r[cw.nome] ? whats(r[cw.nome]) : null, lp = cl && r[cl.nome] ? urlCompleta(r[cl.nome]) : null;
+  const k = !w && p ? contatosDe(p.singular, r._id).find(x => whats(x.telefone || '')) : null;
   const falta = t => comFalta ? el('span', { className: 'falta', textContent: t }) : null;
   return [
-    w ? el('a', { href: w, target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' }) : falta('sem WhatsApp'),
+    w ? el('a', { href: w, target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' })
+      : k ? el('a', { href: whats(k.telefone), target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' + (k.nome ? ` (${k.nome})` : '') })
+      : falta('sem WhatsApp'),
     w ? el('a', { href: abordagem(r), target: '_blank', rel: 'noopener', className: 'whats', textContent: 'Abordagem', title: 'Abrir o WhatsApp com a mensagem de abordagem pronta' }) : null,
-    lp ? el('a', { href: lp, target: '_blank', rel: 'noopener', textContent: 'Link da LP ↗' }) : falta('sem LP')].filter(Boolean);
+    lp ? el('a', { href: lp, target: '_blank', rel: 'noopener', textContent: 'Link da LP ↗' }) : p && !cl ? null : falta('sem LP')].filter(Boolean);
 }
 
 // ---------- ficha do registro ----------
 let fichaReg = null;
-function abrirFicha(r) { fichaReg = r; renderFicha(); $('#ficha').showModal(); }
+function abrirFicha(r) { fichaReg = r; renderFicha(); if (!$('#ficha').open) $('#ficha').showModal(); }
 function renderFicha() {
-  const r = fichaReg, d = $('#ficha');
+  const r = fichaReg, d = $('#ficha'), p = PAPEIS[L().papel], master = L().papel === 'contabilidades';
   if (!r || !L().registros.includes(r)) return d.close();
   const largos = ['servicos', 'proxima_acao', 'url', 'telefone'];
   const campos = L().colunas.map((c, i) => el('div', { className: 'f-campo' + (i === 0 || largos.includes(c.tipo) ? ' largo' : '') },
@@ -1134,7 +1177,10 @@ function renderFicha() {
   d.replaceChildren(
     el('div', { className: 'g-topo' }, el('h2', { textContent: r[L().colunas[0].nome] || '(sem nome)' }), el('button', { textContent: 'Fechar', onclick: () => d.close() })),
     ...(a.length ? [el('p', { className: 'f-aviso', textContent: a.join(' · ') })] : []),
+    ...(master ? [totaisContabilidade(r)] : []),
     el('div', { className: 'f-corpo' }, ...campos),
+    ...(master ? [clientesDaContabilidade(r)] : []),
+    ...(p ? [el('section', { className: 'p-secao' }, el('h3', { textContent: 'Contatos' }), editorContatos(p.singular, r))] : []),
     el('div', { className: 'f-rodape' },
       el('button', { type: 'button', className: 'perigo', textContent: 'Apagar registro', onclick: async () => { await apagarRegistro(r); if (!L().registros.includes(r)) d.close(); } }),
       el('button', { type: 'button', className: 'primario', textContent: 'Concluído', onclick: () => d.close() })));
@@ -1157,6 +1203,170 @@ function moverParaRecusa(r, nome) {
     } }),
     el('button', { type: 'button', textContent: 'Cancelar', onclick: normal }));
   normal();
+  return caixa;
+}
+
+// ---------- parceria com contabilidades ----------
+// Duas listas com papel fixo (guardado em _Config; vale mesmo se a lista for renomeada). "Contabilidades" é o registro
+// master e cada registro de "Clientes" aponta para uma contabilidade pelo _id, numa coluna do tipo "vinculo".
+// Contatos (vários por registro) ficam fora das colunas, em D.contatos (aba _Contatos):
+// { _id, tipo, ref, nome, cargo, telefone, email, obs }, com tipo = singular do papel e ref = _id do registro.
+// Para ligar uma lista nova depois (ex.: Demandas de um cliente): um papel aqui com pai: 'clientes'.
+const API_VERSAO = 2; // Codigo.gs / server.py que já gravam papéis, vínculos e contatos
+const etapaPadrao = (nome, cor, tipo = 'aberta', oferta = false) => ({ nome, tipo, cor, oferta });
+const PAPEIS = {
+  contabilidades: { nome: 'Contabilidades', singular: 'contabilidade',
+    colunas: [['Escritório', 'texto'], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
+      ['Comissão combinada', 'texto'], ['Observações', 'texto']],
+    etapas: [etapaPadrao('Prospecção', '#94a3b8'), etapaPadrao('Contato feito', '#60a5fa'), etapaPadrao('Reunião agendada', '#38bdf8'),
+      etapaPadrao('Reunião realizada', '#a78bfa'), etapaPadrao('Piloto combinado', '#fbbf24'), etapaPadrao('Piloto em andamento', '#fb923c'),
+      etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Pausado/Perdido', '#ef4444', 'perdida')] },
+  clientes: { nome: 'Clientes', singular: 'cliente', pai: 'contabilidades', removido: '(contabilidade removida)',
+    colunas: [['Empresa', 'texto'], ['Contabilidade', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
+      ['Data de início', 'data'], ['Observações', 'texto']],
+    etapas: [etapaPadrao('Indicado', '#94a3b8'), etapaPadrao('Contato com o dono', '#60a5fa'), etapaPadrao('Diagnóstico agendado', '#38bdf8'),
+      etapaPadrao('Diagnóstico em andamento', '#a78bfa'), etapaPadrao('Relatório entregue', '#f472b6'), etapaPadrao('Proposta enviada', '#fbbf24', 'aberta', true),
+      etapaPadrao('Implementação', '#34d399', 'ganha', true), etapaPadrao('Sustentação', '#22c55e', 'ganha', true), etapaPadrao('Perdido', '#ef4444', 'perdida')] },
+};
+const listaDo = papel => D.listas.find(l => l.papel === papel);
+const colTipo = (l, tipo) => l.colunas.find(c => c.tipo === tipo);
+const nomeReg = (l, r) => r[l.colunas[0].nome] || '(sem nome)';
+const etapaNa = (l, r) => l.etapas.find(e => e.nome === r[colTipo(l, 'etapa').nome]);
+const colVinculo = (l = L()) => colTipo(l, 'vinculo');
+const listaPai = (l = L()) => listaDo(PAPEIS[l.papel]?.pai);
+function rotuloVinculo(l, id) {
+  if (!id) return '';
+  const pai = listaPai(l), r = pai?.registros.find(x => x._id === id);
+  return r ? nomeReg(pai, r) : PAPEIS[l.papel]?.removido || '(removido)';
+}
+// valores do filtro de vínculo: registros da lista pai + _ids que não existem mais
+function idsVinculo(c) {
+  const ids = (listaPai()?.registros || []).map(x => x._id);
+  for (const r of L().registros) if (r[c.nome] && !ids.includes(r[c.nome])) ids.push(r[c.nome]);
+  return ids;
+}
+function clientesDe(r) {
+  const lc = listaDo('clientes'), cv = lc && colVinculo(lc);
+  return cv ? lc.registros.filter(x => x[cv.nome] === r._id) : [];
+}
+
+// Cria as listas da parceria que faltarem (só com Codigo.gs / server.py novos). Devolve true se criou.
+function garantirParceria() {
+  let criou = false;
+  for (const [papel, p] of Object.entries(PAPEIS)) {
+    if (listaDo(papel)) continue;
+    let nome = p.nome;
+    for (let i = 2; D.listas.some(l => mesmoNome(l.nome, nome)); i++) nome = `${p.nome} ${i}`;
+    const colunas = [...p.colunas, ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'], ['Etapa desde', 'etapa_desde'], ['Dias na etapa', 'dias_na_etapa']];
+    D.listas.push({ nome, papel, registros: [], historico: [],
+      colunas: colunas.map(([nome, tipo]) => ({ nome, tipo, opcoes: [], visivel: true })), etapas: p.etapas.map(e => ({ ...e })) });
+    criou = true;
+  }
+  return criou;
+}
+
+// muda para a lista l e abre a ficha de r (ex.: cliente aberto a partir da contabilidade)
+function abrirNaLista(l, r) {
+  const i = D.listas.indexOf(l);
+  if (i !== atual) { atual = i; V = { busca: '', filtros: {}, ordem: null, dir: 1, agrupar: V.agrupar }; $('#busca').value = ''; }
+  fichaReg = r;
+  render(); abrirFicha(r);
+}
+function novoCliente(contab) {
+  const lc = listaDo('clientes'), r = registroNovo(lc);
+  r[colVinculo(lc).nome] = contab._id;
+  lc.registros.unshift(r);
+  salvar(); abrirNaLista(lc, r);
+}
+
+// comissão: um único percentual no texto ("10% do setup", "5% da mensalidade") é calculado sobre os contratos ativos;
+// sem % (ou com mais de um) o texto só é exibido
+function percentualComissao(t) {
+  const ps = [...String(t || '').matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)];
+  return ps.length === 1 ? { p: Number(ps[0][1].replace(',', '.')) / 100, mensal: /mensal/i.test(t) } : null;
+}
+// totais calculados na hora, no topo da ficha da contabilidade
+function totaisContabilidade(r) {
+  const lc = listaDo('clientes'), filhos = clientesDe(r);
+  if (!lc) return null;
+  const colNum = re => lc.colunas.find(c => c.tipo === 'numero' && re.test(c.nome));
+  const soma = (rs, c) => c ? rs.reduce((s, x) => s + (typeof x[c.nome] === 'number' ? x[c.nome] : 0), 0) : 0;
+  const ganhas = lc.etapas.filter(e => e.tipo === 'ganha').map(e => e.nome);
+  const ativos = filhos.filter(x => etapaNa(lc, x)?.tipo === 'ganha');
+  const diagnostico = filhos.filter(x => /diagn/i.test(x[colTipo(lc, 'etapa').nome] || ''));
+  const mensal = soma(ativos, colNum(/mensal/i)), setup = soma(ativos, colNum(/setup/i));
+  const cc = L().colunas.find(c => /comiss/i.test(c.nome)), txt = cc ? String(r[cc.nome] ?? '').trim() : '';
+  const pc = percentualComissao(txt);
+  let comissao;
+  if (pc) {
+    comissao = tile('Comissão a pagar', brl(pc.p * (pc.mensal ? mensal : setup)) + (pc.mensal ? '/mês' : ''), txt,
+      `${num(pc.p * 100, 2)}% × ${pc.mensal ? `mensalidades (${brl(mensal)}/mês)` : `setup (${brl(setup)})`} dos ${ativos.length} contrato(s) ativo(s)`);
+  } else {
+    comissao = tile('Comissão combinada', txt || '–', txt ? 'texto livre: não calculada' : 'preencha "Comissão combinada"');
+    comissao.classList.add('texto');
+  }
+  return el('div', { className: 'tiles p-tiles' },
+    tile('Clientes indicados', filhos.length),
+    tile('Em diagnóstico', diagnostico.length, 'etapas com "diagnóstico"'),
+    tile('Contrato ativo', ativos.length, ganhas.join(' ou ')),
+    tile('Mensalidades', brl(mensal) + '/mês', 'dos contratos ativos'),
+    comissao);
+}
+function clientesDaContabilidade(r) {
+  const lc = listaDo('clientes'), filhos = clientesDe(r);
+  if (!lc) return null;
+  const ce = colTipo(lc, 'etapa').nome;
+  const valores = x => lc.colunas.filter(c => c.tipo === 'numero' && typeof x[c.nome] === 'number').map(c => `${c.nome}: ${brl(x[c.nome])}`).join(' · ');
+  const linhas = filhos.map(x => {
+    const e = etapaNa(lc, x), chip = el('span', { className: 'chip', textContent: x[ce] || '(sem etapa)' });
+    if (e) { chip.style.background = e.cor; chip.style.color = corTexto(e.cor); }
+    return el('button', { type: 'button', className: 'p-cliente', title: 'Abrir a ficha do cliente', onclick: () => abrirNaLista(lc, x) },
+      el('b', { textContent: nomeReg(lc, x) }), chip, el('small', { textContent: valores(x) }));
+  });
+  return el('section', { className: 'p-secao' },
+    el('h3', {}, lc.nome, el('span', { className: 'n', textContent: filhos.length }),
+      el('button', { type: 'button', className: 'primario', textContent: '+ Cliente', onclick: () => novoCliente(r) })),
+    ...(linhas.length ? linhas : [el('p', { className: 'sv-vazio', textContent: 'Nenhum cliente ligado a esta contabilidade ainda.' })]));
+}
+
+// ---------- contatos ----------
+const CAMPOS_CONTATO = [['nome', 'Nome', 'text'], ['cargo', 'Cargo', 'text'], ['telefone', 'Telefone', 'tel'], ['email', 'E-mail', 'email'], ['obs', 'Observação', 'text']];
+const contatosDe = (tipo, id) => (D.contatos || []).filter(k => k.tipo === tipo && k.ref === id);
+function linksContato(k) {
+  const w = whats(k.telefone || ''), m = /\S@\S/.test(k.email || '') ? 'mailto:' + k.email.trim() : null;
+  return [w ? el('a', { href: w, target: '_blank', rel: 'noopener', className: 'whats', textContent: 'WhatsApp' }) : null,
+    m ? el('a', { href: m, textContent: 'E-mail' }) : null].filter(Boolean);
+}
+function editorContatos(tipo, r) {
+  const caixa = el('div', { className: 'contatos' });
+  const desenhar = () => {
+    const lista = contatosDe(tipo, r._id);
+    const itens = lista.map(k => {
+      const links = el('div', { className: 'links' }, ...linksContato(k));
+      const campos = CAMPOS_CONTATO.map(([f, rotulo, tipoInput]) => {
+        const i = el('input', { type: tipoInput, className: 'k-' + f, value: k[f] ?? '', placeholder: rotulo, title: rotulo, onchange: () => {
+          const v = i.value.trim();
+          if (v) k[f] = v; else delete k[f];
+          links.replaceChildren(...linksContato(k));
+          salvar();
+        } });
+        return i;
+      });
+      return el('div', { className: 'k-item' }, ...campos, links,
+        el('button', { type: 'button', className: 'icone', textContent: '✕', title: 'Apagar contato', onclick: async () => {
+          if (CAMPOS_CONTATO.some(([f]) => k[f]) && !await confirmar(`Apagar o contato "${k.nome || k.telefone || k.email || 'sem nome'}"?`)) return;
+          D.contatos = D.contatos.filter(x => x !== k);
+          salvar(); desenhar();
+        } }));
+    });
+    caixa.replaceChildren(...itens, ...(itens.length ? [] : [el('p', { className: 'sv-vazio', textContent: 'Nenhum contato ainda.' })]),
+      el('button', { type: 'button', textContent: '+ Contato', onclick: () => {
+        D.contatos.push({ _id: novoId(), tipo, ref: r._id });
+        salvar(); desenhar();
+        [...caixa.querySelectorAll('.k-nome')].at(-1)?.focus();
+      } }));
+  };
+  desenhar();
   return caixa;
 }
 
@@ -1191,6 +1401,7 @@ function chave(r, c) {
   if (c.tipo === 'etapa') { const i = L().etapas.findIndex(e => e.nome === v); return i < 0 ? 999 : i; }
   if (c.tipo === 'caixa') return v ? 1 : 0;
   if (c.tipo === 'servicos') { const s = somaItens(v); return s.unico + s.mensal; }
+  if (c.tipo === 'vinculo') return textoDe(r, c);
   return v;
 }
 function comparar(a, b, c) {
@@ -1217,7 +1428,7 @@ function filtro(c) {
   const f = V.filtros[c.nome] ?? '';
   const mudou = e => { V.filtros[c.nome] = e.target.value; renderCorpo(); };
   if (c.tipo === 'dias_na_etapa') return el('input', { className: 'filtro', value: f, oninput: mudou });
-  if (['selecao', 'etapa', 'caixa', 'servicos'].includes(c.tipo)) {
+  if (['selecao', 'etapa', 'caixa', 'servicos', 'vinculo'].includes(c.tipo)) {
     const b = el('button', { className: 'filtro multi', type: 'button' });
     b.onclick = () => abrirMenuFiltro(c, b);
     rotuloFiltro(c, b);
@@ -1227,9 +1438,10 @@ function filtro(c) {
 }
 
 const ROTULO_VAZIO = '(vazio)';
+const rotuloValor = (c, v) => v === '__vazio' ? ROTULO_VAZIO : c.tipo === 'vinculo' ? rotuloVinculo(L(), v) : v;
 function rotuloFiltro(c, b) {
   const f = V.filtros[c.nome] || [];
-  const nomes = f.map(v => v === '__vazio' ? ROTULO_VAZIO : v);
+  const nomes = f.map(v => rotuloValor(c, v));
   b.textContent = !f.length ? '(todos)' : f.length === 1 ? nomes[0] : `${nomes[0]} +${f.length - 1}`;
   b.title = f.length ? 'Mostrando: ' + nomes.join(', ') : 'Filtrar por um ou mais valores';
   b.classList.toggle('ativo', f.length > 0);
@@ -1237,7 +1449,7 @@ function rotuloFiltro(c, b) {
 // lista de caixas de marcar (popover, para não ser cortada pela rolagem da tabela)
 function abrirMenuFiltro(c, b) {
   const m = $('#menuFiltro');
-  const ops = c.tipo === 'caixa' ? ['sim', 'não'] : c.tipo === 'etapa' ? L().etapas.map(e => e.nome) : c.tipo === 'servicos' ? nomesServicos(c) : c.opcoes;
+  const ops = c.tipo === 'caixa' ? ['sim', 'não'] : c.tipo === 'etapa' ? L().etapas.map(e => e.nome) : c.tipo === 'servicos' ? nomesServicos(c) : c.tipo === 'vinculo' ? idsVinculo(c) : c.opcoes;
   const valores = [...ops, ...(c.tipo === 'caixa' ? [] : ['__vazio'])];
   const marcados = () => V.filtros[c.nome] || [];
   const contagem = v => L().registros.filter(r => valoresFiltro(r, c).includes(v)).length;
@@ -1250,7 +1462,7 @@ function abrirMenuFiltro(c, b) {
       el('input', { type: 'checkbox', checked: marcados().includes(v), onchange: ev => {
         aplicar(ev.target.checked ? [...marcados(), v] : marcados().filter(x => x !== v));
       } }),
-      el('span', { textContent: v === '__vazio' ? ROTULO_VAZIO : v }),
+      el('span', { textContent: rotuloValor(c, v) }),
       el('small', { textContent: contagem(v) }))));
   desenhar();
   const r = b.getBoundingClientRect();
@@ -1273,7 +1485,7 @@ function renderCabecalho() {
     el('tr', {}, ...titulos, el('th', {})),
     el('tr', {}, ...cols.map(c => el('th', {}, filtro(c))), el('th', {})));
   // no celular não há cabeçalho de tabela: filtros de etapa e serviço ficam na barra
-  $('#filtrosCel').replaceChildren(...[colDo('etapa'), colServicos()].filter(Boolean).map(c => el('span', {}, c.nome, filtro(c))));
+  $('#filtrosCel').replaceChildren(...[colDo('etapa'), colServicos(), colVinculo()].filter(Boolean).map(c => el('span', {}, c.nome, filtro(c))));
 }
 
 function renderCorpo() {
@@ -1384,6 +1596,19 @@ function celula(r, c) {
     e.dataset.id = r._id; e.dataset.col = c.nome;
     return e;
   }
+  if (c.tipo === 'vinculo') { // escolhe o registro da lista pai pelo nome e guarda o _id
+    const pai = listaPai(), regs = pai ? [...pai.registros].sort((a, b) => nomeReg(pai, a).localeCompare(nomeReg(pai, b), 'pt-BR')) : [];
+    e = el('select', { onchange: () => editar(r, c, e.value || null) }, el('option', { value: '', textContent: '' }),
+      ...regs.map(x => el('option', { value: x._id, textContent: nomeReg(pai, x) })));
+    if (v && !regs.some(x => x._id === v)) e.append(el('option', { value: v, textContent: rotuloVinculo(L(), v) }));
+    e.value = v ?? '';
+    e.dataset.id = r._id; e.dataset.col = c.nome;
+    if (!pai) return e;
+    return el('div', { className: 'comLink' }, e, el('button', { type: 'button', className: 'ir', textContent: '↗', title: `Abrir a ficha da ${PAPEIS[pai.papel].singular}`, onclick: () => {
+      const x = pai.registros.find(y => y._id === r[c.nome]);
+      if (x) abrirNaLista(pai, x); else toast(`Escolha uma ${PAPEIS[pai.papel].singular} primeiro.`);
+    } }));
+  }
   if (c.tipo === 'caixa') {
     e = el('input', { type: 'checkbox', checked: !!v, onchange: () => editar(r, c, e.checked) });
   } else if (c.tipo === 'etapa' || c.tipo === 'selecao') {
@@ -1449,20 +1674,30 @@ function atualizarLinks(tr, r) {
   }
 }
 
+// contabilidade: os clientes ligados NÃO são apagados (ficam como "contabilidade removida"); os contatos do registro vão junto
 async function apagarRegistro(r) {
-  const nome = r[L().colunas[0].nome] || 'este registro';
-  if (!await confirmar(`Apagar "${nome}"?`)) return;
-  L().registros = L().registros.filter(x => x !== r);
+  const l = L(), nome = r[l.colunas[0].nome] || 'este registro', p = PAPEIS[l.papel];
+  const filhos = l.papel === 'contabilidades' ? clientesDe(r) : [], contatos = p ? contatosDe(p.singular, r._id) : [];
+  const msg = [`Apagar "${nome}"?`,
+    filhos.length ? `${filhos.length} cliente(s) estão ligados a esta contabilidade e NÃO serão apagados: ficam como "${PAPEIS.clientes.removido}" na guia ${listaDo('clientes').nome}, para você ligar a outra.` : null,
+    contatos.length ? `${contatos.length} contato(s) deste registro também serão apagados.` : null].filter(Boolean).join('\n\n');
+  if (!await confirmar(msg)) return;
+  l.registros = l.registros.filter(x => x !== r);
+  if (contatos.length) D.contatos = D.contatos.filter(k => !contatos.includes(k));
   render(); salvar();
 }
 
-function novoRegistro() {
-  const r = { _id: novoId(), [colDo('etapa').nome]: L().etapas[0].nome, [colDo('etapa_desde').nome]: hoje() };
-  for (const c of L().colunas) { // valor padrão da coluna (ex.: Serviços = Landing Page, com o preço sugerido)
+function registroNovo(l) {
+  const r = { _id: novoId(), [colTipo(l, 'etapa').nome]: l.etapas[0].nome, [colTipo(l, 'etapa_desde').nome]: hoje() };
+  for (const c of l.colunas) { // valor padrão da coluna (ex.: Serviços = Landing Page, com o preço sugerido)
     if (c.padrao == null || c.padrao === '' || c.nome in r) continue;
     if (c.tipo === 'servicos') { const s = catalogo(c, c.padrao); if (s) r[c.nome] = [itemDe(s)]; }
     else r[c.nome] = c.tipo === 'numero' ? (deNumero(String(c.padrao)) ?? c.padrao) : c.padrao;
   }
+  return r;
+}
+function novoRegistro() {
+  const r = registroNovo(L());
   L().registros.unshift(r);
   V.busca = ''; V.filtros = {}; $('#busca').value = '';
   render(); salvar();
@@ -1678,17 +1913,18 @@ function renderGerenciador() {
   const l = L(), g = $('#gerenciador');
   const linhasCol = [];
   l.colunas.forEach((c, i) => {
-    const sis = c.tipo in SISTEMA, sv = c.tipo === 'servicos';
+    const sis = c.tipo in SISTEMA, sv = c.tipo === 'servicos', vc = c.tipo === 'vinculo';
     const tipo = sis ? el('span', { className: 'sis', textContent: 'Coluna padrão (' + SISTEMA[c.tipo] + ')' })
       : sv ? el('span', { className: 'sis', textContent: 'Serviços vendidos (itens com valor)' })
+      : vc ? el('span', { className: 'sis', textContent: `Vínculo com ${listaPai()?.nome || 'outra lista'} (guarda o _id)` })
       : el('select', { onchange: ev => mudarTipo(c, ev.target.value) }, ...Object.entries(TIPOS).filter(([v]) => v !== 'servicos').map(([v, t]) => el('option', { value: v, textContent: t })));
-    if (!sis && !sv) tipo.value = c.tipo;
+    if (!sis && !sv && !vc) tipo.value = c.tipo;
     let padrao = null;
     if (sv) { // serviço incluído automaticamente nos registros novos
       padrao = el('select', { title: 'Serviço incluído automaticamente nos registros novos', onchange: ev => { if (ev.target.value) c.padrao = ev.target.value; else delete c.padrao; mudou(); } },
         el('option', { value: '', textContent: '(nenhum)' }), ...(c.servicos || []).map(s => el('option', { value: s.nome, textContent: s.nome })));
       padrao.value = catalogo(c, c.padrao) ? c.padrao : '';
-    } else if (!sis && !['data', 'caixa'].includes(c.tipo)) {
+    } else if (!sis && !vc && !['data', 'caixa'].includes(c.tipo)) {
       padrao = el('input', { type: 'text', className: 'curto', value: c.padrao ?? '', placeholder: 'padrão',
         title: 'Valor preenchido automaticamente nos registros novos',
         onchange: ev => { const v = ev.target.value.trim(); if (!v) delete c.padrao; else c.padrao = c.tipo === 'numero' ? (deNumero(v) ?? v) : v; mudou(); } });
@@ -1700,7 +1936,7 @@ function renderGerenciador() {
       el('td', {}, padrao),
       el('td', {}, c.tipo === 'selecao' || sv ? el('button', { textContent: sv ? `Catálogo (${(c.servicos || []).length})` : `Opções (${c.opcoes.length})`,
         onclick: () => { opcoesAbertas = opcoesAbertas === c ? null : c; renderGerenciador(); } }) : null),
-      el('td', {}, sis ? null : el('button', { className: 'icone', textContent: '✕', title: 'Apagar coluna', onclick: () => apagarColuna(c) }))));
+      el('td', {}, sis || vc ? null : el('button', { className: 'icone', textContent: '✕', title: 'Apagar coluna', onclick: () => apagarColuna(c) }))));
     if (opcoesAbertas === c && sv) linhasCol.push(linhaCatalogo(c));
     if (opcoesAbertas === c && c.tipo === 'selecao') {
       const novaOp = el('input', { type: 'text', placeholder: 'Nova opção' });
