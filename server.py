@@ -33,12 +33,12 @@ ABA_HIST = "_Historico"  # mudanças de etapa: uma linha por mudança
 CAB_HIST = ["Lista", "_id", "Data", "De", "Para"]
 ABA_ITENS = "_Servicos"  # serviços vendidos: uma linha por item de cada registro
 CAB_ITENS = ["Lista", "_id", "Serviço", "Cobrança", "Valor"]
-ABA_CONTATOS = "_Contatos"  # contatos de contabilidades e clientes: uma linha por contato
+ABA_CONTATOS = "_Contatos"  # contatos de parceiros e clientes: uma linha por contato
 CAB_CONTATOS = ["Tipo", "_id do registro", "Nome", "Cargo", "Telefone", "E-mail", "Observação", "_id"]
 CAMPOS_CONTATO = ["nome", "cargo", "telefone", "email", "obs"]
-VERSAO_API = 2  # o index.html só cria Contabilidades/Clientes/Contatos com esta versão ou mais nova
+VERSAO_API = 2  # o index.html só cria Parcerias/Clientes/Contatos com esta versão ou mais nova
 COBRANCAS = {"unico": "Único", "mensal": "Mensal"}
-# "vinculo": guarda o _id de um registro de outra lista (ex.: o cliente aponta para a contabilidade)
+# "vinculo": guarda o _id de um registro de outra lista (ex.: o cliente aponta para o parceiro)
 TIPOS_COLUNA = ["texto", "numero", "data", "selecao", "url", "telefone", "caixa", "servicos", "vinculo"]
 # Colunas que toda lista tem. O tipo identifica a coluna, então o nome pode ser trocado.
 COLUNAS_SISTEMA = [("Etapa", "etapa"), ("Próxima ação", "proxima_acao"),
@@ -190,7 +190,7 @@ def ler_config(wb):
             continue
         c = cfg.setdefault(str(lista).strip(), {"colunas": [], "etapas": [], "servicos": []})
         nome, tipo, item = str(nome).strip(), str(tipo or "").strip().lower(), str(item or "").strip().lower()
-        if item == "papel":  # papel fixo da lista (contabilidades, clientes): vale mesmo se a lista for renomeada
+        if item == "papel":  # papel fixo da lista (parcerias, clientes): vale mesmo se a lista for renomeada
             c["papel"] = nome
         elif item in ("servico", "serviço"):  # catálogo da coluna de serviços; Padrão = preço sugerido
             if nome not in [s["nome"] for s in c["servicos"]]:

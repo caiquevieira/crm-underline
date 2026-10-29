@@ -321,7 +321,7 @@
     .tile { padding: 10px 12px; }
     .tile b, .tiles.dinheiro .tile b { font-size: 20px; }
     .hb .rot { max-width: 110px; }
-    #ficha, #gerenciador, #dlgServicos { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; border-radius: 0; border: 0; }
+    #ficha, #gerenciador, #dlgServicos, #dlgImportar { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; border-radius: 0; border: 0; }
     .f-corpo { grid-template-columns: 1fr; padding: 12px; }
     .sv-corpo { padding: 12px; }
     .sv-item { grid-template-columns: 1fr 1fr auto; }
@@ -331,7 +331,7 @@
     .g-corpo { padding: 12px; }
   }
 
-  /* parceria: totais da contabilidade, clientes ligados e contatos (na ficha) */
+  /* parceria: totais do parceiro, clientes ligados e contatos (na ficha); importar lista */
   .t-vinculo { min-width: 190px; }
   .comLink select { flex: 1; min-width: 0; }
   .comLink button.ir { padding: 0 8px; border: 0; background: none; color: var(--link); }
@@ -350,6 +350,13 @@
   .k-item .k-obs { grid-column: 1 / 3; }
   .k-item .links { grid-column: 3 / 6; }
   .k-item > button.icone { grid-column: 5; grid-row: 1; }
+  #dlgImportar { width: min(640px, 96vw); }
+  .imp-corpo { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; }
+  .imp-corpo p { margin: 0; color: var(--suave); font-size: 13px; white-space: pre-line; }
+  .imp-corpo textarea { width: 100%; min-height: 220px; padding: 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); color: inherit; font: 13px ui-monospace, Consolas, monospace; }
+  .imp-corpo label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .imp-corpo select { padding: 5px 8px; border: 1px solid var(--borda); border-radius: 6px; }
+  .imp-corpo .imp-previa { color: var(--texto); }
   @media (max-width: 700px) {
     .p-tiles { margin: 12px 12px 0; }
     .p-secao { padding: 0 12px 12px; }
@@ -393,6 +400,7 @@
   <button id="btnLimpar">Limpar filtros</button>
   <span id="contagem"></span>
   <span class="espaco"></span>
+  <button id="btnImportar" title="Colar uma lista de parceiros (nome e telefone)" hidden>Importar lista</button>
   <button id="btnRenomearLista">Renomear lista</button>
   <button id="btnGerenciar">Colunas e etapas</button>
   <button id="btnNovo" class="primario">+ Registro</button>
@@ -425,6 +433,7 @@
   </form>
 </dialog>
 <dialog id="dlgServicos"></dialog>
+<dialog id="dlgImportar"></dialog>
 <div id="toast" popover="manual"></div>
 <div id="menuFiltro" popover="auto"></div>
 
@@ -782,14 +791,14 @@ async function carregar(perguntar = true) {
   const nomeAtual = D && L().nome;
   D = j;
   D.contatos ||= [];
-  // Contabilidades/Clientes/Contatos precisam do Codigo.gs (ou server.py) novo: o antigo recusaria o tipo "vinculo" e perderia os contatos
+  // Parcerias/Clientes/Contatos precisam do Codigo.gs (ou server.py) novo: o antigo recusaria o tipo "vinculo" e perderia os contatos
   const novaApi = (j.versaoApi || 0) >= API_VERSAO, criou = novaApi && garantirParceria();
   atual = Math.max(0, D.listas.findIndex(l => l.nome === nomeAtual));
   clearTimeout(timer); sujo = false; pendente = false;
   esconderAviso(); mostrarStatus(LOCAL ? 'Carregado do disco' : 'Carregado da planilha');
   render();
-  if (!novaApi) mostrarAviso(LOCAL ? 'O server.py em execução é de uma versão antiga: feche a janela preta e abra o iniciar.bat de novo para ver Contabilidades, Clientes e Contatos.'
-    : 'O Apps Script da planilha é de uma versão antiga: as guias Contabilidades e Clientes (e os contatos) aparecem depois de colar o apps-script/Codigo.gs novo e publicar uma nova versão (veja o README).');
+  if (!novaApi) mostrarAviso(LOCAL ? 'O server.py em execução é de uma versão antiga: feche a janela preta e abra o iniciar.bat de novo para ver Parcerias, Clientes e Contatos.'
+    : 'O Apps Script da planilha é de uma versão antiga: as guias Parcerias e Clientes (e os contatos) aparecem depois de colar o apps-script/Codigo.gs novo e publicar uma nova versão (veja o README).');
   if (j.precisaSalvar || criou) salvar();
 }
 
@@ -1167,7 +1176,7 @@ function linksDe(r, comFalta) {
 let fichaReg = null;
 function abrirFicha(r) { fichaReg = r; renderFicha(); if (!$('#ficha').open) $('#ficha').showModal(); }
 function renderFicha() {
-  const r = fichaReg, d = $('#ficha'), p = PAPEIS[L().papel], master = L().papel === 'contabilidades';
+  const r = fichaReg, d = $('#ficha'), p = PAPEIS[L().papel], master = L().papel === 'parcerias';
   if (!r || !L().registros.includes(r)) return d.close();
   const largos = ['servicos', 'proxima_acao', 'url', 'telefone'];
   const campos = L().colunas.map((c, i) => el('div', { className: 'f-campo' + (i === 0 || largos.includes(c.tipo) ? ' largo' : '') },
@@ -1177,9 +1186,9 @@ function renderFicha() {
   d.replaceChildren(
     el('div', { className: 'g-topo' }, el('h2', { textContent: r[L().colunas[0].nome] || '(sem nome)' }), el('button', { textContent: 'Fechar', onclick: () => d.close() })),
     ...(a.length ? [el('p', { className: 'f-aviso', textContent: a.join(' · ') })] : []),
-    ...(master ? [totaisContabilidade(r)] : []),
+    ...(master ? [totaisParceiro(r)] : []),
     el('div', { className: 'f-corpo' }, ...campos),
-    ...(master ? [clientesDaContabilidade(r)] : []),
+    ...(master ? [clientesDoParceiro(r)] : []),
     ...(p ? [el('section', { className: 'p-secao' }, el('h3', { textContent: 'Contatos' }), editorContatos(p.singular, r))] : []),
     el('div', { className: 'f-rodape' },
       el('button', { type: 'button', className: 'perigo', textContent: 'Apagar registro', onclick: async () => { await apagarRegistro(r); if (!L().registros.includes(r)) d.close(); } }),
@@ -1206,23 +1215,24 @@ function moverParaRecusa(r, nome) {
   return caixa;
 }
 
-// ---------- parceria com contabilidades ----------
-// Duas listas com papel fixo (guardado em _Config; vale mesmo se a lista for renomeada). "Contabilidades" é o registro
-// master e cada registro de "Clientes" aponta para uma contabilidade pelo _id, numa coluna do tipo "vinculo".
+// ---------- parcerias (contabilidades, advocacias...) ----------
+// Duas listas com papel fixo (guardado em _Config; vale mesmo se a lista for renomeada). "Parcerias" é o registro
+// master (o segmento diz se é contabilidade, advocacia...) e cada registro de "Clientes" aponta para um parceiro
+// pelo _id, numa coluna do tipo "vinculo".
 // Contatos (vários por registro) ficam fora das colunas, em D.contatos (aba _Contatos):
 // { _id, tipo, ref, nome, cargo, telefone, email, obs }, com tipo = singular do papel e ref = _id do registro.
 // Para ligar uma lista nova depois (ex.: Demandas de um cliente): um papel aqui com pai: 'clientes'.
 const API_VERSAO = 2; // Codigo.gs / server.py que já gravam papéis, vínculos e contatos
 const etapaPadrao = (nome, cor, tipo = 'aberta', oferta = false) => ({ nome, tipo, cor, oferta });
 const PAPEIS = {
-  contabilidades: { nome: 'Contabilidades', singular: 'contabilidade',
-    colunas: [['Escritório', 'texto'], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
+  parcerias: { nome: 'Parcerias', singular: 'parceiro', artigo: 'o',
+    colunas: [['Escritório', 'texto'], ['Segmento', 'selecao', ['Contabilidade', 'Advocacia']], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
       ['Comissão combinada', 'texto'], ['Observações', 'texto']],
     etapas: [etapaPadrao('Prospecção', '#94a3b8'), etapaPadrao('Contato feito', '#60a5fa'), etapaPadrao('Reunião agendada', '#38bdf8'),
       etapaPadrao('Reunião realizada', '#a78bfa'), etapaPadrao('Piloto combinado', '#fbbf24'), etapaPadrao('Piloto em andamento', '#fb923c'),
       etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Pausado/Perdido', '#ef4444', 'perdida')] },
-  clientes: { nome: 'Clientes', singular: 'cliente', pai: 'contabilidades', removido: '(contabilidade removida)',
-    colunas: [['Empresa', 'texto'], ['Contabilidade', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
+  clientes: { nome: 'Clientes', singular: 'cliente', artigo: 'o', pai: 'parcerias', removido: '(parceiro removido)',
+    colunas: [['Empresa', 'texto'], ['Parceiro', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
       ['Data de início', 'data'], ['Observações', 'texto']],
     etapas: [etapaPadrao('Indicado', '#94a3b8'), etapaPadrao('Contato com o dono', '#60a5fa'), etapaPadrao('Diagnóstico agendado', '#38bdf8'),
       etapaPadrao('Diagnóstico em andamento', '#a78bfa'), etapaPadrao('Relatório entregue', '#f472b6'), etapaPadrao('Proposta enviada', '#fbbf24', 'aberta', true),
@@ -1259,22 +1269,22 @@ function garantirParceria() {
     for (let i = 2; D.listas.some(l => mesmoNome(l.nome, nome)); i++) nome = `${p.nome} ${i}`;
     const colunas = [...p.colunas, ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'], ['Etapa desde', 'etapa_desde'], ['Dias na etapa', 'dias_na_etapa']];
     D.listas.push({ nome, papel, registros: [], historico: [],
-      colunas: colunas.map(([nome, tipo]) => ({ nome, tipo, opcoes: [], visivel: true })), etapas: p.etapas.map(e => ({ ...e })) });
+      colunas: colunas.map(([nome, tipo, opcoes = []]) => ({ nome, tipo, opcoes: [...opcoes], visivel: true })), etapas: p.etapas.map(e => ({ ...e })) });
     criou = true;
   }
   return criou;
 }
 
-// muda para a lista l e abre a ficha de r (ex.: cliente aberto a partir da contabilidade)
+// muda para a lista l e abre a ficha de r (ex.: cliente aberto a partir do parceiro)
 function abrirNaLista(l, r) {
   const i = D.listas.indexOf(l);
   if (i !== atual) { atual = i; V = { busca: '', filtros: {}, ordem: null, dir: 1, agrupar: V.agrupar }; $('#busca').value = ''; }
   fichaReg = r;
   render(); abrirFicha(r);
 }
-function novoCliente(contab) {
+function novoCliente(parceiro) {
   const lc = listaDo('clientes'), r = registroNovo(lc);
-  r[colVinculo(lc).nome] = contab._id;
+  r[colVinculo(lc).nome] = parceiro._id;
   lc.registros.unshift(r);
   salvar(); abrirNaLista(lc, r);
 }
@@ -1285,8 +1295,8 @@ function percentualComissao(t) {
   const ps = [...String(t || '').matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)];
   return ps.length === 1 ? { p: Number(ps[0][1].replace(',', '.')) / 100, mensal: /mensal/i.test(t) } : null;
 }
-// totais calculados na hora, no topo da ficha da contabilidade
-function totaisContabilidade(r) {
+// totais calculados na hora, no topo da ficha do parceiro
+function totaisParceiro(r) {
   const lc = listaDo('clientes'), filhos = clientesDe(r);
   if (!lc) return null;
   const colNum = re => lc.colunas.find(c => c.tipo === 'numero' && re.test(c.nome));
@@ -1312,7 +1322,7 @@ function totaisContabilidade(r) {
     tile('Mensalidades', brl(mensal) + '/mês', 'dos contratos ativos'),
     comissao);
 }
-function clientesDaContabilidade(r) {
+function clientesDoParceiro(r) {
   const lc = listaDo('clientes'), filhos = clientesDe(r);
   if (!lc) return null;
   const ce = colTipo(lc, 'etapa').nome;
@@ -1326,8 +1336,67 @@ function clientesDaContabilidade(r) {
   return el('section', { className: 'p-secao' },
     el('h3', {}, lc.nome, el('span', { className: 'n', textContent: filhos.length }),
       el('button', { type: 'button', className: 'primario', textContent: '+ Cliente', onclick: () => novoCliente(r) })),
-    ...(linhas.length ? linhas : [el('p', { className: 'sv-vazio', textContent: 'Nenhum cliente ligado a esta contabilidade ainda.' })]));
+    ...(linhas.length ? linhas : [el('p', { className: 'sv-vazio', textContent: 'Nenhum cliente ligado a este parceiro ainda.' })]));
 }
+
+// ---------- importar lista de parceiros ----------
+// Uma linha por parceiro, como copiada de uma planilha: nome e, no fim, o telefone (separado por tab, ";" ou espaços).
+// O telefone vira um contato do parceiro. Cabeçalho ("Contabilidade  Telefone") e nomes que já existem são pulados.
+function linhasImportacao(texto) {
+  const linhas = texto.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  if (linhas.length && /telefone/i.test(linhas[0]) && !/\d/.test(linhas[0])) linhas.shift(); // cabeçalho
+  return linhas.map(x => {
+    const m = /^(.*?)[\s;,]+(\+?[\d\s().-]+)$/.exec(x);
+    return m && m[2].replace(/\D/g, '').length >= 8 ? { nome: m[1].trim(), telefone: m[2].trim() } : { nome: x.replace(/[\s;,]+$/, ''), telefone: '' };
+  }).filter(x => x.nome);
+}
+function abrirImportar() {
+  const l = L(), d = $('#dlgImportar'), p = PAPEIS[l.papel];
+  const cs = l.colunas.find(c => c.tipo === 'selecao' && /^segmento/i.test(c.nome));
+  const seg = cs ? selecao(cs.opcoes, cs.opcoes[0]) : null;
+  const texto = el('textarea', { placeholder: 'Escritório Exemplo Contabilidade\t11999990000\nOutro Escritório\t1133334444' });
+  const previa = el('p', { className: 'imp-previa' }), botao = el('button', { type: 'button', className: 'primario', textContent: 'Importar', disabled: true });
+  const existentes = new Set(l.registros.map(r => norm(nomeReg(l, r)).trim()));
+  let novos = [];
+  const atualizar = () => {
+    const vistos = new Set(), pulados = [], porTelefone = new Map();
+    novos = [];
+    for (const x of linhasImportacao(texto.value)) {
+      const k = norm(x.nome);
+      if (existentes.has(k) || vistos.has(k)) { pulados.push(x.nome); continue; }
+      vistos.add(k); novos.push(x);
+      const t = x.telefone.replace(/\D/g, '');
+      if (t) (porTelefone.get(t) || porTelefone.set(t, []).get(t)).push(x.nome);
+    }
+    const mesmoTel = [...porTelefone.values()].filter(v => v.length > 1).map(v => v.join(' e '));
+    previa.textContent = !texto.value.trim() ? '' : [`${novos.length} ${p.singular}(s) novo(s), ${novos.filter(x => x.telefone).length} com telefone.`,
+      pulados.length ? `Já existem, não serão importados: ${pulados.join(', ')}.` : null,
+      mesmoTel.length ? `Atenção, mesmo telefone em: ${mesmoTel.join('; ')}.` : null].filter(Boolean).join('\n');
+    botao.textContent = `Importar ${novos.length}`; botao.disabled = !novos.length;
+  };
+  texto.oninput = atualizar;
+  botao.onclick = () => {
+    const cn = l.colunas[0].nome;
+    for (const x of [...novos].reverse()) { // unshift ao contrário: fica na ordem colada, no topo da lista
+      const r = registroNovo(l);
+      r[cn] = x.nome;
+      if (seg?.value) r[cs.nome] = seg.value;
+      l.registros.unshift(r);
+      if (x.telefone) D.contatos.push({ _id: novoId(), tipo: p.singular, ref: r._id, telefone: x.telefone });
+    }
+    d.close(); render(); salvar();
+    toast(`${novos.length} ${p.singular}(s) importado(s) em "${etapaPadraoDe(l)}".`, false);
+  };
+  d.replaceChildren(
+    el('div', { className: 'g-topo' }, el('h2', { textContent: `Importar lista — ${l.nome}` }), el('button', { textContent: 'Fechar', onclick: () => d.close() })),
+    el('div', { className: 'imp-corpo' },
+      el('p', { textContent: `Cole uma linha por ${p.singular}: nome e telefone no fim (pode copiar duas colunas de uma planilha). Entram na etapa "${etapaPadraoDe(l)}"; o telefone vira um contato.` }),
+      texto, seg ? el('label', {}, `${cs.nome}:`, seg) : null, previa,
+      el('div', { className: 'botoes' }, el('button', { type: 'button', textContent: 'Cancelar', onclick: () => d.close() }), botao)));
+  d.showModal();
+  texto.focus();
+}
+const etapaPadraoDe = l => l.etapas[0].nome;
 
 // ---------- contatos ----------
 const CAMPOS_CONTATO = [['nome', 'Nome', 'text'], ['cargo', 'Cargo', 'text'], ['telefone', 'Telefone', 'tel'], ['email', 'E-mail', 'email'], ['obs', 'Observação', 'text']];
@@ -1604,9 +1673,9 @@ function celula(r, c) {
     e.value = v ?? '';
     e.dataset.id = r._id; e.dataset.col = c.nome;
     if (!pai) return e;
-    return el('div', { className: 'comLink' }, e, el('button', { type: 'button', className: 'ir', textContent: '↗', title: `Abrir a ficha da ${PAPEIS[pai.papel].singular}`, onclick: () => {
+    return el('div', { className: 'comLink' }, e, el('button', { type: 'button', className: 'ir', textContent: '↗', title: `Abrir a ficha d${PAPEIS[pai.papel].artigo} ${PAPEIS[pai.papel].singular}`, onclick: () => {
       const x = pai.registros.find(y => y._id === r[c.nome]);
-      if (x) abrirNaLista(pai, x); else toast(`Escolha uma ${PAPEIS[pai.papel].singular} primeiro.`);
+      if (x) abrirNaLista(pai, x); else toast(`Escolha ${PAPEIS[pai.papel].artigo === 'a' ? 'uma' : 'um'} ${PAPEIS[pai.papel].singular} primeiro.`);
     } }));
   }
   if (c.tipo === 'caixa') {
@@ -1674,12 +1743,12 @@ function atualizarLinks(tr, r) {
   }
 }
 
-// contabilidade: os clientes ligados NÃO são apagados (ficam como "contabilidade removida"); os contatos do registro vão junto
+// parceiro: os clientes ligados NÃO são apagados (ficam como "parceiro removido"); os contatos do registro vão junto
 async function apagarRegistro(r) {
   const l = L(), nome = r[l.colunas[0].nome] || 'este registro', p = PAPEIS[l.papel];
-  const filhos = l.papel === 'contabilidades' ? clientesDe(r) : [], contatos = p ? contatosDe(p.singular, r._id) : [];
+  const filhos = l.papel === 'parcerias' ? clientesDe(r) : [], contatos = p ? contatosDe(p.singular, r._id) : [];
   const msg = [`Apagar "${nome}"?`,
-    filhos.length ? `${filhos.length} cliente(s) estão ligados a esta contabilidade e NÃO serão apagados: ficam como "${PAPEIS.clientes.removido}" na guia ${listaDo('clientes').nome}, para você ligar a outra.` : null,
+    filhos.length ? `${filhos.length} cliente(s) estão ligados a este parceiro e NÃO serão apagados: ficam como "${PAPEIS.clientes.removido}" na guia ${listaDo('clientes').nome}, para você ligar a outro.` : null,
     contatos.length ? `${contatos.length} contato(s) deste registro também serão apagados.` : null].filter(Boolean).join('\n\n');
   if (!await confirmar(msg)) return;
   l.registros = l.registros.filter(x => x !== r);
@@ -1710,6 +1779,7 @@ function render() {
   const a = document.activeElement, foco = a?.dataset?.id ? [a.dataset.id, a.dataset.col] : null;
   const raiz = a?.closest?.('#ficha') ? '#ficha' : '#corpo';
   renderAbas(); renderResumo(); renderCabecalho(); renderCorpo();
+  $('#btnImportar').hidden = L().papel !== 'parcerias';
   if (visao === 'graficos') renderGraficos();
   if (visao === 'hoje') renderHoje();
   if ($('#ficha').open) renderFicha();
@@ -2000,6 +2070,7 @@ $('#vTabela').onclick = () => mudarVisao('tabela');
 $('#vGraficos').onclick = () => mudarVisao('graficos');
 $('#btnNovaLista').onclick = novaLista;
 $('#btnRenomearLista').onclick = renomearLista;
+$('#btnImportar').onclick = abrirImportar;
 $('#btnNovo').onclick = novoRegistro;
 $('#btnGerenciar').onclick = () => { opcoesAbertas = null; renderGerenciador(); $('#gerenciador').showModal(); };
 $('#gerenciador').onclose = () => render();

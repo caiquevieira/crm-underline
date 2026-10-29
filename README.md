@@ -26,16 +26,17 @@ Os dados **não** ficam neste repositório: ele só tem o programa.
 Para trocar a chave (ex.: perdeu o celular), rode `configurarChave` outra vez: os aparelhos antigos deixam de acessar.
 Depois de mudar o `Codigo.gs`, use **Implantar > Gerenciar implantações > Editar > Nova versão** para manter o mesmo URL.
 
-## Parceria com contabilidades
+## Parcerias (contabilidades, advocacias...)
 
-As guias **Contabilidades** (registro master) e **Clientes** são criadas sozinhas na primeira vez que o CRM abre
+As guias **Parcerias** (registro master, com o **Segmento** do parceiro) e **Clientes** são criadas sozinhas na primeira vez que o CRM abre
 com o `Codigo.gs` atualizado (com o antigo aparece um aviso e nada muda). Elas funcionam como as outras listas
 (tabela, filtros, "Agrupar por etapa", "Colunas e etapas", Hoje, Gráficos) e ficam em abas próprias da planilha.
 
-- Cada cliente aponta para uma contabilidade pelo `_id` dela (coluna **Contabilidade**, tipo "vínculo").
-- A ficha da contabilidade mostra os totais, os clientes ligados e o botão **+ Cliente**.
-- Contatos (vários por registro) ficam na aba `_Contatos`: Tipo (`contabilidade`/`cliente`) + `_id do registro`.
-- Apagar uma contabilidade avisa antes e não apaga os clientes: eles ficam como "(contabilidade removida)".
+- Cada cliente aponta para um parceiro pelo `_id` dele (coluna **Parceiro**, tipo "vínculo").
+- A ficha do parceiro mostra os totais, os clientes ligados e o botão **+ Cliente**.
+- **Importar lista** (na guia Parcerias): cole nome e telefone, uma linha por parceiro; o telefone vira contato.
+- Contatos (vários por registro) ficam na aba `_Contatos`: Tipo (`parceiro`/`cliente`) + `_id do registro`.
+- Apagar um parceiro avisa antes e não apaga os clientes: eles ficam como "(parceiro removido)".
 
 **Ao atualizar:** cole o `apps-script/Codigo.gs` novo e publique uma **Nova versão** (passo acima) antes de usar.
 

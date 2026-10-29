@@ -13,11 +13,11 @@ const ABA_HIST = '_Historico'; // mudanças de etapa: uma linha por mudança
 const CAB_HIST = ['Lista', '_id', 'Data', 'De', 'Para'];
 const ABA_ITENS = '_Servicos'; // serviços vendidos: uma linha por item de cada registro
 const CAB_ITENS = ['Lista', '_id', 'Serviço', 'Cobrança', 'Valor'];
-const ABA_CONTATOS = '_Contatos'; // contatos de contabilidades e clientes: uma linha por contato
+const ABA_CONTATOS = '_Contatos'; // contatos de parceiros e clientes: uma linha por contato
 const CAB_CONTATOS = ['Tipo', '_id do registro', 'Nome', 'Cargo', 'Telefone', 'E-mail', 'Observação', '_id'];
 const CAMPOS_CONTATO = ['nome', 'cargo', 'telefone', 'email', 'obs'];
 const COBRANCAS = { unico: 'Único', mensal: 'Mensal' };
-// "vinculo": guarda o _id de um registro de outra lista (ex.: o cliente aponta para a contabilidade)
+// "vinculo": guarda o _id de um registro de outra lista (ex.: o cliente aponta para o parceiro)
 const TIPOS_COLUNA = ['texto', 'numero', 'data', 'selecao', 'url', 'telefone', 'caixa', 'servicos', 'vinculo'];
 // Colunas que toda lista tem. O tipo identifica a coluna, então o nome pode ser trocado.
 const COLUNAS_SISTEMA = [['Etapa', 'etapa'], ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'],
@@ -26,7 +26,7 @@ const TIPOS_SISTEMA = COLUNAS_SISTEMA.map(c => c[1]);
 const TIPOS_DATA = ['data', 'etapa_desde', 'data_proxima_acao'];
 const TIPOS_ETAPA = ['aberta', 'ganha', 'perdida'];
 const PROPS = PropertiesService.getScriptProperties();
-const VERSAO_API = 2; // o index.html só cria Contabilidades/Clientes/Contatos com esta versão ou mais nova
+const VERSAO_API = 2; // o index.html só cria Parcerias/Clientes/Contatos com esta versão ou mais nova
 
 // ---------- instalação ----------
 
@@ -181,7 +181,7 @@ function lerConfig(ss) {
     lista = String(lista).trim();
     const c = cfg[lista] || (cfg[lista] = { colunas: [], etapas: [], servicos: [] });
     nome = String(nome).trim(); tipo = String(tipo).trim().toLowerCase(); item = String(item).trim().toLowerCase();
-    if (item === 'papel') { // papel fixo da lista (contabilidades, clientes): vale mesmo se a lista for renomeada
+    if (item === 'papel') { // papel fixo da lista (parcerias, clientes): vale mesmo se a lista for renomeada
       c.papel = nome;
     } else if (item === 'servico' || item === 'serviço') { // catálogo da coluna de serviços; Padrão = preço sugerido
       if (!c.servicos.some(s => s.nome === nome)) c.servicos.push({ nome: nome, cobranca: cobranca(tipo), preco: numero(padrao) });
