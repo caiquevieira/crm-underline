@@ -89,8 +89,9 @@
   .dados td input[type=checkbox] { display: block; margin: 0 auto; width: 16px; height: 16px; }
   .dados td input::placeholder { color: transparent; }
   .dados td input:focus::placeholder { color: var(--apagado); }
-  .dados td input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
+  .dados td input.invalido, .dados td select.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
   .dados td select.etapa { font-weight: 600; }
+  .dados td select:disabled, .f-campo select:disabled { opacity: .35; cursor: not-allowed; }
   .dados td .dias { display: block; padding: 6px 8px; text-align: right; color: var(--suave); }
   .comLink { display: flex; align-items: center; }
   .comLink a { padding: 0 8px; text-decoration: none; font-size: 13px; white-space: nowrap; }
@@ -257,7 +258,7 @@
   .f-campo.largo { grid-column: 1 / -1; }
   .f-campo > span { font-size: 12px; font-weight: 600; color: var(--suave); }
   .f-campo input[type=text], .f-campo > select { width: 100%; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); }
-  .f-campo input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
+  .f-campo input.invalido, .f-campo select.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
   .f-campo input[type=checkbox] { width: 18px; height: 18px; }
   .f-campo select.etapa { font-weight: 600; }
   .f-campo .comLink { gap: 4px; }
@@ -691,8 +692,9 @@ function aplicarEtapa(r, nova) {
   if (nova) r[ce] = nova; else delete r[ce];
   r[colDo('etapa_desde').nome] = hoje();
   (L().historico ||= []).push({ id: r._id, data: hoje(), de, para: nova });
-  const cf = colFim();
+  const cf = colFim(), cm = colMotivo();
   if (cf && !r[cf.nome] && faseDe(r) === 'final') r[cf.nome] = hoje();
+  if (cm && motivoTravado(r, cm)) delete r[cm.nome];
 }
 function textoDe(r, c) {
   if (c.tipo === 'dias_na_etapa') return dias(r[colDo('etapa_desde').nome]) ?? '';
@@ -1229,14 +1231,18 @@ function moverParaRecusa(r, nome) {
 // Para ligar uma lista nova depois (ex.: Demandas de um cliente): um papel aqui com pai: 'clientes'.
 const API_VERSAO = 2; // Codigo.gs / server.py que já gravam papéis, vínculos e contatos
 const CANAIS = ['WhatsApp', 'Ligação', 'E-mail', 'Reunião online', 'Presencial', 'Instagram', 'LinkedIn'];
+const TABULACOES = ['Atendeu', 'Não atendeu', 'Caixa postal', 'Ocupado', 'Número inválido', 'Pediu retorno', 'Respondeu no WhatsApp', 'Sem resposta no WhatsApp'];
+const MOTIVOS_PERDA = ['Sem interesse', 'Já tem parceiro', 'Comissão não atrativa', 'Fora do perfil', 'Sem retorno', 'Outro'];
 const etapaPadrao = (nome, cor, tipo = 'aberta', oferta = false) => ({ nome, tipo, cor, oferta });
 const PAPEIS = {
   parcerias: { nome: 'Parcerias', singular: 'parceiro', artigo: 'o',
-    colunas: [['Escritório', 'texto'], ['Telefone', 'telefone'], ['Segmento', 'selecao', ['Contabilidade', 'Advocacia']], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
-      ['Comissão combinada', 'texto'], ['Observações', 'texto'], ['Responsável', 'texto'], ['Último canal', 'selecao', CANAIS]],
+    colunas: [['Escritório', 'texto'], ['Telefone', 'telefone'], ['Segmento', 'selecao', ['Contabilidade', 'Advocacia']], ['Etapa', 'etapa'], ['Motivo da perda', 'selecao', MOTIVOS_PERDA],
+      ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'], ['Comissão combinada', 'texto'], ['Observações', 'texto'],
+      ['Responsável', 'texto'], ['Último canal', 'selecao', CANAIS], ['Tabulação', 'selecao', TABULACOES]],
     etapas: [etapaPadrao('Prospecção', '#94a3b8'), etapaPadrao('Contato feito', '#60a5fa'), etapaPadrao('Reunião agendada', '#38bdf8'),
       etapaPadrao('Reunião realizada', '#a78bfa'), etapaPadrao('Piloto combinado', '#fbbf24'), etapaPadrao('Piloto em andamento', '#fb923c'),
-      etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Pausado/Perdido', '#ef4444', 'perdida'), etapaPadrao('Desqualificado', '#6b7280', 'perdida')] },
+      etapaPadrao('Pausado', '#a8a29e'), etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Perdido', '#ef4444', 'perdida'),
+      etapaPadrao('Desqualificado', '#6b7280', 'perdida')] },
   clientes: { nome: 'Clientes', singular: 'cliente', artigo: 'o', pai: 'parcerias', removido: '(parceiro removido)',
     colunas: [['Empresa', 'texto'], ['Telefone', 'telefone'], ['Parceiro', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
       ['Data de início', 'data'], ['Observações', 'texto']],
@@ -1272,7 +1278,7 @@ function garantirParceria() {
   for (const [papel, p] of Object.entries(PAPEIS)) {
     const existente = listaDo(papel);
     if (existente) { // listas criadas antes: completa o que faltar
-      const mudou = [colunaTelefone(existente, p), colunasNovas(existente, p), etapasNovas(existente, p)];
+      const mudou = [colunaTelefone(existente, p), separarPausado(existente), colunasNovas(existente, p), etapasNovas(existente, p)];
       criou = mudou.some(Boolean) || criou; continue;
     }
     let nome = p.nome;
@@ -1299,20 +1305,39 @@ function colunaTelefone(l, p) {
   return true;
 }
 
-// Colunas do papel que a lista criada antes ainda não tem (ex.: Responsável, Último canal): entram antes da Próxima ação.
+// Colunas do papel que a lista criada antes ainda não tem (ex.: Responsável, Motivo da perda): cada uma entra depois
+// da coluna que vem antes dela no papel; se essa não existir, antes da Próxima ação.
 function colunasNovas(l, p) {
-  const faltam = p.colunas.filter(([nome]) => !l.colunas.some(c => mesmoNome(c.nome, nome)));
-  if (!faltam.length) return false;
-  const i = l.colunas.findIndex(c => c.tipo === 'proxima_acao');
-  l.colunas.splice(i < 0 ? l.colunas.length : i, 0, ...faltam.map(([nome, tipo, opcoes = []]) => ({ nome, tipo, opcoes: [...opcoes], visivel: true })));
-  return true;
+  let mudou = false;
+  p.colunas.forEach(([nome, tipo, opcoes = []], i) => {
+    if (l.colunas.some(c => mesmoNome(c.nome, nome))) return;
+    const antes = i ? l.colunas.findIndex(c => mesmoNome(c.nome, p.colunas[i - 1][0])) : -1;
+    const pa = l.colunas.findIndex(c => c.tipo === 'proxima_acao');
+    l.colunas.splice(antes >= 0 ? antes + 1 : pa >= 0 ? pa : l.colunas.length, 0, { nome, tipo, opcoes: [...opcoes], visivel: true });
+    mudou = true;
+  });
+  return mudou;
 }
-// Etapas do papel que a lista ainda não tem (ex.: Desqualificado), no fim do funil.
+// Etapas do papel que a lista ainda não tem (ex.: Pausado, Desqualificado): abertas depois da última aberta, finais no fim.
 function etapasNovas(l, p) {
   const faltam = p.etapas.filter(e => !l.etapas.some(x => mesmoNome(x.nome, e.nome)));
-  l.etapas.push(...faltam.map(e => ({ ...e })));
+  for (const e of faltam) {
+    const abertas = l.etapas.filter(x => x.tipo === 'aberta').length;
+    l.etapas.splice(e.tipo === 'aberta' ? abertas : l.etapas.length, 0, { ...e });
+  }
   return faltam.length > 0;
 }
+// A etapa "Pausado/Perdido" virou duas: ela passa a se chamar "Perdido" (os registros vão junto) e "Pausado" entra como aberta.
+function separarPausado(l) {
+  const e = l.etapas.find(x => mesmoNome(x.nome, 'Pausado/Perdido'));
+  if (!e || l.etapas.some(x => mesmoNome(x.nome, 'Perdido'))) return false;
+  const ce = colTipo(l, 'etapa').nome;
+  for (const r of l.registros) if (r[ce] === e.nome) r[ce] = 'Perdido';
+  e.nome = 'Perdido';
+  return true;
+}
+// Listas da parceria: o motivo da perda só vale nas etapas perdidas (Perdido, Desqualificado).
+const motivoTravado = (r, c) => !!PAPEIS[L().papel] && c === colMotivo() && etapaDe(r)?.tipo !== 'perdida';
 
 // muda para a lista l e abre a ficha de r (ex.: cliente aberto a partir do parceiro)
 function abrirNaLista(l, r) {
@@ -1730,6 +1755,11 @@ function celula(r, c) {
     e = selecao(c.tipo === 'etapa' ? L().etapas.map(x => x.nome) : c.opcoes, v, () => e.value === '__nova' ? novaOpcaoNaCelula(r, c, e) : editar(r, c, e.value || null));
     if (c.tipo === 'etapa') { e.className = 'etapa'; pintar(e, v); e.title = historicoTexto(r); }
     else e.append(el('option', { value: '__nova', textContent: '+ Nova opção…' }));
+    if (motivoTravado(r, c)) { e.disabled = true; e.title = 'Só nas etapas perdidas (Perdido, Desqualificado)'; }
+    else if (c === colMotivo() && PAPEIS[L().papel]) { // perdido sem motivo: campo em vermelho até escolher
+      e.classList.toggle('invalido', !v);
+      e.addEventListener('change', () => e.classList.toggle('invalido', !e.value));
+    }
   } else if (TIPOS_DATA.includes(c.tipo)) {
     e = campoData(v, () => editar(r, c, e.value || null));
   } else if (c.tipo === 'numero') {
