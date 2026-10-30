@@ -100,7 +100,7 @@
   .t-selecao { min-width: 140px; }
   .t-telefone { min-width: 230px; }
   .t-etapa { min-width: 160px; }
-  .t-data, .t-etapa_desde, .t-data_proxima_acao { width: 105px; }
+  .t-data, .t-etapa_desde, .t-data_proxima_acao { width: 135px; }
   .t-numero { width: 90px; }
   .t-numero input { text-align: right; }
   .t-caixa { width: 60px; }
@@ -175,7 +175,7 @@
   .item .acao { display: flex; gap: 6px; }
   .item .acao input { padding: 5px 7px; border: 1px solid var(--borda); border-radius: 4px; min-width: 0; }
   .item .acao input.txt { flex: 1; }
-  .item .acao input.dt { width: 100px; }
+  .item .acao input.dt { width: 135px; }
   .item .acao input.invalido { border-color: var(--vermelho); background: var(--bg-invalido); }
   .links { display: flex; gap: 6px; white-space: nowrap; }
   .links a { font-size: 12px; text-decoration: none; padding: 4px 8px; border: 1px solid var(--borda); border-radius: 4px; color: var(--link); }
@@ -423,6 +423,7 @@
 </dialog>
 <dialog id="gerenciador"></dialog>
 <dialog id="ficha"></dialog>
+<datalist id="sugestoesAcao"><option value="Follow-up"><option value="Ligar"><option value="Enviar mensagem"><option value="Agendar reunião"><option value="Enviar proposta"></datalist>
 <dialog id="conectar">
   <form method="dialog">
     <h2>Conectar à planilha</h2>
@@ -1137,17 +1138,16 @@ function itemHoje(r, detalhe, comMover) {
   const etapa = selecao(L().etapas.map(e => e.nome), r[ce], () => { aplicarEtapa(r, etapa.value); salvar(); render(); });
   etapa.className = 'etapa'; pintar(etapa, r[ce]); etapa.title = historicoTexto(r);
   const txt = el('input', { type: 'text', className: 'txt', value: r[cpa] ?? '', placeholder: 'Próxima ação' });
-  const dt = el('input', { type: 'text', className: 'dt', value: br(r[cd]), placeholder: 'dd/mm/aaaa' });
+  txt.setAttribute('list', 'sugestoesAcao');
+  const dt = campoData(r[cd]); dt.className = 'dt';
   const gravarAcao = ev => {
     ev.preventDefault();
-    const x = deBR(dt.value);
-    dt.classList.toggle('invalido', x === undefined);
-    if (x === undefined) return toast('Data inválida. Use dd/mm/aaaa (ex.: 07/10/2026).');
+    const x = dt.value || null;
     if (txt.value.trim()) r[cpa] = txt.value.trim(); else delete r[cpa];
     if (x) r[cd] = x; else delete r[cd];
     salvar(); render(); toast(`Próxima ação de "${nome}" salva.`, false);
   };
-  const amanha = () => { const d = new Date(); d.setDate(d.getDate() + 1); dt.value = br(iso(d)); };
+  const amanha = () => { const d = new Date(); d.setDate(d.getDate() + 1); dt.value = iso(d); };
   const d = diasNaEtapa(r), itens = itensDe(r);
   const item = el('div', { className: 'item' },
     el('div', { className: 'emp' }, el('b', { textContent: nome, title: nome }),
@@ -1228,14 +1228,15 @@ function moverParaRecusa(r, nome) {
 // { _id, tipo, ref, nome, cargo, telefone, email, obs }, com tipo = singular do papel e ref = _id do registro.
 // Para ligar uma lista nova depois (ex.: Demandas de um cliente): um papel aqui com pai: 'clientes'.
 const API_VERSAO = 2; // Codigo.gs / server.py que já gravam papéis, vínculos e contatos
+const CANAIS = ['WhatsApp', 'Ligação', 'E-mail', 'Reunião online', 'Presencial', 'Instagram', 'LinkedIn'];
 const etapaPadrao = (nome, cor, tipo = 'aberta', oferta = false) => ({ nome, tipo, cor, oferta });
 const PAPEIS = {
   parcerias: { nome: 'Parcerias', singular: 'parceiro', artigo: 'o',
     colunas: [['Escritório', 'texto'], ['Telefone', 'telefone'], ['Segmento', 'selecao', ['Contabilidade', 'Advocacia']], ['Etapa', 'etapa'], ['Origem da indicação', 'selecao'], ['Data do 1º contato', 'data'],
-      ['Comissão combinada', 'texto'], ['Observações', 'texto']],
+      ['Comissão combinada', 'texto'], ['Observações', 'texto'], ['Responsável', 'texto'], ['Último canal', 'selecao', CANAIS]],
     etapas: [etapaPadrao('Prospecção', '#94a3b8'), etapaPadrao('Contato feito', '#60a5fa'), etapaPadrao('Reunião agendada', '#38bdf8'),
       etapaPadrao('Reunião realizada', '#a78bfa'), etapaPadrao('Piloto combinado', '#fbbf24'), etapaPadrao('Piloto em andamento', '#fb923c'),
-      etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Pausado/Perdido', '#ef4444', 'perdida')] },
+      etapaPadrao('Parceiro ativo', '#22c55e', 'ganha'), etapaPadrao('Pausado/Perdido', '#ef4444', 'perdida'), etapaPadrao('Desqualificado', '#6b7280', 'perdida')] },
   clientes: { nome: 'Clientes', singular: 'cliente', artigo: 'o', pai: 'parcerias', removido: '(parceiro removido)',
     colunas: [['Empresa', 'texto'], ['Telefone', 'telefone'], ['Parceiro', 'vinculo'], ['Etapa', 'etapa'], ['Valor do setup', 'numero'], ['Mensalidade', 'numero'],
       ['Data de início', 'data'], ['Observações', 'texto']],
@@ -1270,7 +1271,10 @@ function garantirParceria() {
   let criou = false;
   for (const [papel, p] of Object.entries(PAPEIS)) {
     const existente = listaDo(papel);
-    if (existente) { criou = colunaTelefone(existente, p) || criou; continue; }
+    if (existente) { // listas criadas antes: completa o que faltar
+      const mudou = [colunaTelefone(existente, p), colunasNovas(existente, p), etapasNovas(existente, p)];
+      criou = mudou.some(Boolean) || criou; continue;
+    }
     let nome = p.nome;
     for (let i = 2; D.listas.some(l => mesmoNome(l.nome, nome)); i++) nome = `${p.nome} ${i}`;
     const colunas = [...p.colunas, ['Próxima ação', 'proxima_acao'], ['Data da próxima ação', 'data_proxima_acao'], ['Etapa desde', 'etapa_desde'], ['Dias na etapa', 'dias_na_etapa']];
@@ -1293,6 +1297,21 @@ function colunaTelefone(l, p) {
     if (k) { r[nome] = k.telefone; D.contatos = D.contatos.filter(x => x !== k); }
   }
   return true;
+}
+
+// Colunas do papel que a lista criada antes ainda não tem (ex.: Responsável, Último canal): entram antes da Próxima ação.
+function colunasNovas(l, p) {
+  const faltam = p.colunas.filter(([nome]) => !l.colunas.some(c => mesmoNome(c.nome, nome)));
+  if (!faltam.length) return false;
+  const i = l.colunas.findIndex(c => c.tipo === 'proxima_acao');
+  l.colunas.splice(i < 0 ? l.colunas.length : i, 0, ...faltam.map(([nome, tipo, opcoes = []]) => ({ nome, tipo, opcoes: [...opcoes], visivel: true })));
+  return true;
+}
+// Etapas do papel que a lista ainda não tem (ex.: Desqualificado), no fim do funil.
+function etapasNovas(l, p) {
+  const faltam = p.etapas.filter(e => !l.etapas.some(x => mesmoNome(x.nome, e.nome)));
+  l.etapas.push(...faltam.map(e => ({ ...e })));
+  return faltam.length > 0;
 }
 
 // muda para a lista l e abre a ficha de r (ex.: cliente aberto a partir do parceiro)
@@ -1647,6 +1666,12 @@ function linha(r, cols) {
   return tr;
 }
 
+// data com calendário: o clique abre o seletor do navegador, que começa em hoje quando o campo está vazio
+function campoData(v, onchange) {
+  const e = el('input', { type: 'date', value: ehData(v) ? v : '', onchange });
+  e.onclick = () => { try { e.showPicker(); } catch { } };
+  return e;
+}
 function selecao(opcoes, v, onchange) {
   const s = el('select', { onchange }, el('option', { value: '', textContent: '' }), ...opcoes.map(o => el('option', { value: o, textContent: o })));
   if (v && !opcoes.includes(v)) s.append(el('option', { value: v, textContent: v + ' (?)' }));
@@ -1706,12 +1731,7 @@ function celula(r, c) {
     if (c.tipo === 'etapa') { e.className = 'etapa'; pintar(e, v); e.title = historicoTexto(r); }
     else e.append(el('option', { value: '__nova', textContent: '+ Nova opção…' }));
   } else if (TIPOS_DATA.includes(c.tipo)) {
-    e = el('input', { type: 'text', value: br(v), placeholder: 'dd/mm/aaaa', onchange: () => {
-      const x = deBR(e.value);
-      e.classList.toggle('invalido', x === undefined);
-      if (x === undefined) return toast('Data inválida. Use dd/mm/aaaa (ex.: 07/10/2026).');
-      e.value = br(x); editar(r, c, x);
-    } });
+    e = campoData(v, () => editar(r, c, e.value || null));
   } else if (c.tipo === 'numero') {
     e = el('input', { type: 'text', inputMode: 'decimal', value: textoDe(r, c), onchange: () => {
       const x = deNumero(e.value);
@@ -1721,6 +1741,7 @@ function celula(r, c) {
     } });
   } else {
     e = el('input', { type: 'text', value: v ?? '', onchange: () => editar(r, c, e.value.trim() || null) });
+    if (c.tipo === 'proxima_acao') e.setAttribute('list', 'sugestoesAcao');
   }
   e.dataset.id = r._id; e.dataset.col = c.nome;
   const href = !v ? null : c.tipo === 'url' ? urlCompleta(v) : c.tipo === 'telefone' ? whats(v) : null;

@@ -51,6 +51,8 @@ PARCERIAS, CLIENTES E CONTATOS
 - As abas Parcerias e Clientes são listas normais, com um papel fixo guardado na _Config
   (linha "papel"): pode renomear a lista pelo CRM sem perder a ligação.
 - Na aba Parcerias, "Segmento" diz se o parceiro é contabilidade, advocacia etc. (opções em "Colunas e etapas").
+- Também em Parcerias: "Responsável", "Último canal" (WhatsApp, Ligação, E-mail...) e a etapa "Desqualificado".
+  Listas criadas antes ganham essas colunas e a etapa ao abrir o CRM.
 - Na aba Clientes, a coluna "Parceiro" guarda o _id do parceiro (não o nome). Para trocar à mão,
   copie o _id da linha do parceiro. Pelo CRM é só escolher na lista.
 - O telefone principal fica na coluna "Telefone" (na tabela, com o botão WhatsApp); as pessoas de contato
