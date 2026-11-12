@@ -66,9 +66,15 @@
   .dados th, .dados td { border-bottom: 1px solid var(--linha); border-right: 1px solid var(--linha); padding: 0; vertical-align: middle; }
   .dados thead th { position: sticky; background: var(--cabeca); z-index: 2; text-align: left; font-weight: 600; }
   /* primeira coluna fixa ao rolar para os lados */
+  /* 1ª coluna = caixa de seleção (exportar); 2ª = nome; as duas fixas ao rolar para os lados */
   .dados thead th:first-child { left: 0; z-index: 3; }
+  .dados thead th:nth-child(2) { left: 34px; z-index: 3; }
   .dados tbody td:first-child:not([colspan]) { position: sticky; left: 0; z-index: 1; background: var(--cartao); }
-  .dados th:first-child, .dados tbody td:first-child:not([colspan]) { border-right-color: var(--borda-forte); }
+  .dados tbody td:nth-child(2) { position: sticky; left: 34px; z-index: 1; background: var(--cartao); }
+  .dados th:nth-child(2), .dados tbody td:nth-child(2) { border-right-color: var(--borda-forte); }
+  .dados .sel { width: 34px; min-width: 34px; max-width: 34px; text-align: center; padding: 0; }
+  .dados thead th.sel { cursor: default; padding: 0; }
+  .dados .sel input { display: block; margin: 0 auto; width: 16px; height: 16px; cursor: pointer; }
   .dados thead tr:first-child th { top: 0; padding: 7px 8px; cursor: pointer; user-select: none; white-space: nowrap; }
   .dados thead tr:nth-child(2) th { top: 33px; padding: 3px; }
   .dados thead th .seta { color: var(--azul); }
@@ -108,10 +114,11 @@
   .t-dias_na_etapa { width: 70px; }
   td.acoes { width: 60px; text-align: center; white-space: nowrap; }
   button.icone.abrir:hover { color: var(--azul); background: var(--bg-azul); }
-  tr.atrasado td, .dados tbody tr.atrasado td:first-child { background: var(--bg-vermelho); }
+  tr.atrasado td, .dados tbody tr.atrasado td:first-child, .dados tbody tr.atrasado td:nth-child(2) { background: var(--bg-vermelho); }
   tr.atrasado td:first-child { box-shadow: inset 3px 0 0 var(--vermelho); }
-  tr.alerta td, .dados tbody tr.alerta td:first-child { background: var(--bg-ambar); }
+  tr.alerta td, .dados tbody tr.alerta td:first-child, .dados tbody tr.alerta td:nth-child(2) { background: var(--bg-ambar); }
   tr.alerta td:first-child { box-shadow: inset 3px 0 0 var(--ambar); }
+  .dados tbody tr.selecionada td, .dados tbody tr.selecionada td:first-child, .dados tbody tr.selecionada td:nth-child(2) { background: var(--bg-azul); }
   tr.grupo td { padding: 6px 10px; font-weight: 600; background: var(--sutil); }
   tr.grupo .bolinha { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
   tr.grupo .n { color: var(--suave); font-weight: normal; margin-left: 6px; }
@@ -401,6 +408,7 @@
   <button id="btnLimpar">Limpar filtros</button>
   <span id="contagem"></span>
   <span class="espaco"></span>
+  <button id="btnExportar">Exportar Excel</button>
   <button id="btnImportar" title="Colar uma lista de parceiros (nome e telefone)" hidden>Importar lista</button>
   <button id="btnRenomearLista">Renomear lista</button>
   <button id="btnGerenciar">Colunas e etapas</button>
@@ -1524,7 +1532,7 @@ document.addEventListener('mousemove', ev => {
 function renderAbas() {
   $('#abas').replaceChildren(...D.listas.map((l, i) => el('button', {
     textContent: l.nome, className: i === atual ? 'ativa' : '',
-    onclick: () => { atual = i; V = { busca: '', filtros: {}, ordem: null, dir: 1, agrupar: V.agrupar }; $('#busca').value = ''; render(); }
+    onclick: () => { atual = i; sel.clear(); ultimoSel = null; V = { busca: '', filtros: {}, ordem: null, dir: 1, agrupar: V.agrupar }; $('#busca').value = ''; render(); }
   })));
 }
 
@@ -1615,18 +1623,28 @@ function renderCabecalho() {
       renderCabecalho(); renderCorpo();
     }
   }, c.nome, V.ordem === c.nome ? el('span', { className: 'seta', textContent: V.dir === 1 ? ' ▲' : ' ▼' }) : null));
+  const todos = el('input', { type: 'checkbox', id: 'selTodos', title: 'Selecionar todos os registros filtrados (para exportar)', onchange: () => {
+    const rs = filtradosOrdenados(), tudo = rs.length && rs.every(r => sel.has(r._id));
+    for (const r of rs) tudo ? sel.delete(r._id) : sel.add(r._id);
+    ultimoSel = null;
+    marcarSelecao();
+  } });
   $('#cabecalho').replaceChildren(
-    el('tr', {}, ...titulos, el('th', {})),
-    el('tr', {}, ...cols.map(c => el('th', {}, filtro(c))), el('th', {})));
+    el('tr', {}, el('th', { className: 'sel' }, todos), ...titulos, el('th', {})),
+    el('tr', {}, el('th', { className: 'sel' }), ...cols.map(c => el('th', {}, filtro(c))), el('th', {})));
   // no celular não há cabeçalho de tabela: filtros de etapa e serviço ficam na barra
   $('#filtrosCel').replaceChildren(...[colDo('etapa'), colServicos(), colVinculo()].filter(Boolean).map(c => el('span', {}, c.nome, filtro(c))));
 }
 
+// registros que passam na busca e nos filtros, na ordem da tela (sem o agrupamento)
+function filtradosOrdenados() {
+  const l = L(), rs = l.registros.filter(passa), c = l.colunas.find(c => c.nome === V.ordem);
+  if (c) rs.sort((a, b) => comparar(a, b, c));
+  return rs;
+}
 function renderCorpo() {
   const l = L(), cols = l.colunas.filter(c => c.visivel), ce = colDo('etapa').nome;
-  let rs = l.registros.filter(passa);
-  const c = l.colunas.find(c => c.nome === V.ordem);
-  if (c) rs.sort((a, b) => comparar(a, b, c));
+  const rs = filtradosOrdenados();
   // grupos: [{ nome, cor, regs }]; sem "Agrupar por etapa", um grupo só sem título
   let grupos = [{ nome: null, regs: rs }];
   if (V.agrupar) {
@@ -1646,13 +1664,152 @@ function renderCorpo() {
     if (!rs.length) cartoes.append(el('p', { className: 'nada', textContent: vazio }));
   } else {
     for (const g of grupos) {
-      if (g.nome != null) corpo.append(el('tr', { className: 'grupo' }, el('td', { colSpan: cols.length + 1 },
+      if (g.nome != null) corpo.append(el('tr', { className: 'grupo' }, el('td', { colSpan: cols.length + 2 },
         bolinha(g), g.nome || '(sem etapa)', el('span', { className: 'n', textContent: g.regs.length }))));
       g.regs.forEach(r => corpo.append(linha(r, cols)));
     }
-    if (!rs.length) corpo.append(el('tr', {}, el('td', { className: 'nada', colSpan: cols.length + 1, textContent: vazio })));
+    if (!rs.length) corpo.append(el('tr', {}, el('td', { className: 'nada', colSpan: cols.length + 2, textContent: vazio })));
   }
-  $('#contagem').textContent = rs.length === l.registros.length ? `${rs.length} registros` : `${rs.length} de ${l.registros.length} registros`;
+  marcarSelecao();
+}
+
+// ---------- seleção para exportar ----------
+let sel = new Set(), ultimoSel = null; // _ids marcados; último clicado (Shift+clique marca o intervalo)
+function selecionados() { return L().registros.filter(r => sel.has(r._id)); }
+// checkbox do cabeçalho, linhas destacadas, contagem e rótulo do botão
+function marcarSelecao() {
+  const l = L(), rs = filtradosOrdenados(), n = selecionados().length, nf = rs.filter(r => sel.has(r._id)).length;
+  const t = $('#selTodos');
+  if (t) { t.checked = rs.length > 0 && nf === rs.length; t.indeterminate = nf > 0 && nf < rs.length; }
+  for (const tr of document.querySelectorAll('#corpo tr[data-id]')) {
+    const s = sel.has(tr.dataset.id);
+    tr.classList.toggle('selecionada', s);
+    const cx = tr.querySelector('td.sel input'); if (cx) cx.checked = s;
+  }
+  const usarSel = n > 0 && !celular.matches;
+  $('#contagem').textContent = (rs.length === l.registros.length ? `${rs.length} registros` : `${rs.length} de ${l.registros.length} registros`) +
+    (usarSel ? ` · ${n} selecionado${n === 1 ? '' : 's'}` : '');
+  const b = $('#btnExportar');
+  b.textContent = usarSel ? `Exportar ${n} selecionado${n === 1 ? '' : 's'}` : 'Exportar Excel';
+  b.title = usarSel ? 'Baixar só os registros marcados em Excel (.xlsx)' : 'Baixar em Excel (.xlsx) os registros que estão na tela (com a busca e os filtros). Marque as caixinhas para escolher linhas.';
+}
+function cliqueSelecao(ev, r) {
+  const marcar = ev.target.checked;
+  const rs = filtradosOrdenados(), i = rs.indexOf(r), j = ultimoSel ? rs.findIndex(x => x._id === ultimoSel) : -1;
+  const faixa = ev.shiftKey && i >= 0 && j >= 0 ? rs.slice(Math.min(i, j), Math.max(i, j) + 1) : [r];
+  for (const x of faixa) marcar ? sel.add(x._id) : sel.delete(x._id);
+  ultimoSel = r._id;
+  marcarSelecao();
+}
+
+// ---------- exportar para Excel (.xlsx gerado aqui mesmo, sem biblioteca) ----------
+function exportarExcel() {
+  // com seleção: os marcados na ordem da tela (e, no fim, marcados que um filtro escondeu); sem seleção: tudo o que está filtrado
+  const l = L(), rs = selecionados().length && !celular.matches
+    ? filtradosOrdenados().filter(r => sel.has(r._id)).concat(selecionados().filter(r => !passa(r))) : filtradosOrdenados();
+  if (!rs.length) return toast('Nenhum registro para exportar.');
+  const cols = l.colunas, cs = colServicos();
+  const cab = [...cols.map(c => c.nome), ...(cs ? ['Total único (R$)', 'Total mensal (R$)'] : [])];
+  const serial = s => { const [a, m, d] = s.split('-').map(Number); return Date.UTC(a, m - 1, d) / 864e5 + 25569; };
+  const valor = (r, c) => {
+    const v = r[c.nome];
+    if (c.tipo === 'dias_na_etapa') { const d = dias(r[colDo('etapa_desde').nome]); return d == null ? null : d; }
+    if (v == null || v === '') return null;
+    if (TIPOS_DATA.includes(c.tipo) && ehData(v)) return { data: serial(v) };
+    if (c.tipo === 'numero' && typeof v === 'number') return v;
+    if (c.tipo === 'caixa') return v ? 'Sim' : 'Não';
+    if (c.tipo === 'servicos') return Array.isArray(v) ? v.map(fmtItem).join(' + ') : null;
+    return String(textoDe(r, c));
+  };
+  const linhas = rs.map(r => {
+    const x = cols.map(c => valor(r, c));
+    if (cs) { const s = somaItens(itensDe(r)); x.push(s.unico || null, s.mensal || null); }
+    return x;
+  });
+  const blob = montarXlsx(l.nome, cab, linhas);
+  const a = el('a', { href: URL.createObjectURL(blob), download: `${l.nome} ${hoje()}.xlsx` });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`${rs.length} registro${rs.length === 1 ? '' : 's'} exportado${rs.length === 1 ? '' : 's'}.`, false);
+}
+
+// cab: nomes das colunas; linhas: arrays com string | number | { data: serialDoExcel } | null
+function montarXlsx(nomeAba, cab, linhas) {
+  const esc = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const letra = i => { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  const cel = (v, ref, estilo) => {
+    if (v == null || v === '') return '';
+    if (typeof v === 'number') return `<c r="${ref}"><v>${v}</v></c>`;
+    if (typeof v === 'object') return `<c r="${ref}" s="2"><v>${v.data}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"${estilo ? ` s="${estilo}"` : ''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+  };
+  const todas = [cab, ...linhas];
+  const larg = cab.map((_, i) => Math.min(60, Math.max(8, ...todas.map(x => {
+    const v = x[i]; return v == null ? 0 : typeof v === 'object' ? 11 : String(v).length + 2;
+  }))));
+  const ult = letra(cab.length - 1) + todas.length;
+  const sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+    '<cols>' + larg.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + '</cols><sheetData>' +
+    todas.map((x, n) => `<row r="${n + 1}">` + x.map((v, i) => cel(v, letra(i) + (n + 1), n ? 0 : 1)).join('') + '</row>').join('') +
+    `</sheetData><autoFilter ref="A1:${ult}"/></worksheet>`;
+  const aba = esc(nomeAba.slice(0, 31) || 'Planilha');
+  const arquivos = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      `<sheets><sheet name="${aba}" sheetId="1" r:id="rId1"/></sheets>` +
+      `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${aba.replace(/'/g, "''")}'!$A$1:$${letra(cab.length - 1)}$${todas.length}</definedName></definedNames></workbook>`,
+    'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/styles.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts>' +
+      '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+      '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+      '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
+    'xl/worksheets/sheet1.xml': sheet,
+  };
+  return new Blob([zipSemCompressao(arquivos)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+// .zip no modo "store" (sem compressão) — suficiente para o Excel abrir o .xlsx
+function zipSemCompressao(arquivos) {
+  const tab = zipSemCompressao.tab ||= Array.from({ length: 256 }, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xEDB88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
+  const crc = b => { let c = ~0; for (let i = 0; i < b.length; i++) c = tab[(c ^ b[i]) & 255] ^ (c >>> 8); return ~c >>> 0; };
+  const enc = new TextEncoder(), d = new Date();
+  const hora = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dia = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const partes = [], central = [];
+  let pos = 0;
+  for (const [nome, texto] of Object.entries(arquivos)) {
+    const n = enc.encode(nome), dados = enc.encode(texto), c = crc(dados);
+    const loc = new DataView(new ArrayBuffer(30));
+    [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, hora, 2], [12, dia, 2], [14, c, 4], [18, dados.length, 4], [22, dados.length, 4], [26, n.length, 2], [28, 0, 2]]
+      .forEach(([o, v, t]) => t === 4 ? loc.setUint32(o, v, true) : loc.setUint16(o, v, true));
+    const cen = new DataView(new ArrayBuffer(46));
+    [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, hora, 2], [14, dia, 2], [16, c, 4], [20, dados.length, 4], [24, dados.length, 4],
+      [28, n.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, pos, 4]]
+      .forEach(([o, v, t]) => t === 4 ? cen.setUint32(o, v, true) : cen.setUint16(o, v, true));
+    partes.push(new Uint8Array(loc.buffer), n, dados);
+    central.push(new Uint8Array(cen.buffer), n);
+    pos += 30 + n.length + dados.length;
+  }
+  const tamCentral = central.reduce((s, b) => s + b.length, 0), qtd = Object.keys(arquivos).length;
+  const fim = new DataView(new ArrayBuffer(22));
+  [[0, 0x06054b50, 4], [4, 0, 2], [6, 0, 2], [8, qtd, 2], [10, qtd, 2], [12, tamCentral, 4], [16, pos, 4], [20, 0, 2]]
+    .forEach(([o, v, t]) => t === 4 ? fim.setUint32(o, v, true) : fim.setUint16(o, v, true));
+  return new Blob([...partes, ...central, new Uint8Array(fim.buffer)]);
 }
 
 // registro em cartão (celular): nome, etapa, serviços, próxima ação e links; toque abre a ficha
@@ -1684,6 +1841,7 @@ function linha(r, cols) {
   const tr = el('tr');
   marcarLinha(tr, r);
   tr.dataset.id = r._id;
+  tr.append(el('td', { className: 'sel' }, el('input', { type: 'checkbox', checked: sel.has(r._id), title: 'Marcar para exportar (Shift+clique marca um intervalo)', onclick: ev => cliqueSelecao(ev, r) })));
   for (const c of cols) tr.append(el('td', { className: 't-' + c.tipo }, celula(r, c)));
   tr.append(el('td', { className: 'acoes' },
     el('button', { className: 'icone abrir', textContent: '☰', title: 'Abrir ficha (todas as colunas)', onclick: () => abrirFicha(r) }),
@@ -2143,6 +2301,7 @@ $('#vGraficos').onclick = () => mudarVisao('graficos');
 $('#btnNovaLista').onclick = novaLista;
 $('#btnRenomearLista').onclick = renomearLista;
 $('#btnImportar').onclick = abrirImportar;
+$('#btnExportar').onclick = exportarExcel;
 $('#btnNovo').onclick = novoRegistro;
 $('#btnGerenciar').onclick = () => { opcoesAbertas = null; renderGerenciador(); $('#gerenciador').showModal(); };
 $('#gerenciador').onclose = () => render();
